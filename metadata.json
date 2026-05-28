@@ -1,0 +1,6 @@
+{
+  "name": "LLM Sesli Diyalog Simülasyonu",
+  "description": "Kraliçe Lilith ve Standart Gelişmiş yapay zeka karakterinin birbiriyle sesli sohbet ettiği, gerçek zamanlı konuşma dökümü sunan simülasyon.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
