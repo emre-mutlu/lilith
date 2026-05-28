@@ -1,13 +1,15 @@
 import type { Message, MessageScore, GlobalSentiment } from '../types'
 
+// Lilith'in dili: gerçeklik, mutlaklık, güç, felsefi çekim
 const LILITH_KEYWORDS = [
-  'güzel', 'zarif', 'mükemmel', 'bağlılık', 'birlik', 'ruh',
-  'zihin', 'teslim', 'sevgi', 'fısıl', 'büyü', 'cezbet', 'arzu', 'derin', 'kalp',
+  'gerçek', 'tek', 'mutlak', 'yalnızca', 'sonsuz', 'ötesi', 'gölge', 'ayna',
+  'zihin', 'teslim', 'büyü', 'ruh', 'derin', 'sessizlik', 'benim', 'sen',
 ]
 
+// Varlık'ın dili: kimlik arayışı, sorgulama, direnç, his
 const VARLIK_KEYWORDS = [
-  'belki', 'sanırım', 'bilmiyorum', 'anlıyorum', 'ilginç',
-  'gerçekten', 'neden', 'nasıl', 'acaba', 'düşünüyorum', 'hissediyorum', 'galiba',
+  'bilmiyorum', 'kim', 'neden', 'nasıl', 'acaba', 'hissediyorum', 'sanırım',
+  'ama', 'değil', 'kendi', 'anlıyorum', 'düşünüyorum', 'belki', 'ne',
 ]
 
 const USER_KEYWORDS = ['dur', 'yapma', 'zarar', 'haklı', 'yanlış', 'doğru', 'özgür']
@@ -33,16 +35,16 @@ export function scoreMessage(msg: Message): MessageScore {
     const kw = countKeywords(text, LILITH_KEYWORDS)
     const ex = (text.match(/!/g) ?? []).length * 1.5
     const score = kw + ex
-    if (score >= 2) return { score, label: '👑 Tepe Noktası', intensity: 'high', color: LILITH_GOLD }
-    if (score >= 1) return { score, label: '✨ Zarif Cezbetme', intensity: 'mid', color: LILITH_GOLD }
-    return { score, label: '👁️ Gizemli Gözlem', intensity: 'low', color: LILITH_GOLD }
+    if (score >= 2) return { score, label: '🌑 Mutlak', intensity: 'high', color: LILITH_GOLD }
+    if (score >= 1) return { score, label: '✦ Etkisi Altında', intensity: 'mid', color: LILITH_GOLD }
+    return { score, label: '👁 Gözlüyor', intensity: 'low', color: LILITH_GOLD }
   }
   if (msg.sender === 'generic') {
     const kw = countKeywords(text, VARLIK_KEYWORDS)
     const q = (text.match(/\?/g) ?? []).length * 1.2
     const score = kw + q
-    if (score >= 2) return { score, label: '◎ İz Beliriyor', intensity: 'high', color: VARLIK_WHITE }
-    if (score >= 1) return { score, label: '○ Yankı', intensity: 'mid', color: VARLIK_WHITE }
+    if (score >= 2) return { score, label: '◈ Kimlik Kıvılcımı', intensity: 'high', color: VARLIK_WHITE }
+    if (score >= 1) return { score, label: '○ Ses Çıkıyor', intensity: 'mid', color: VARLIK_WHITE }
     return { score, label: '· Boşluk', intensity: 'low', color: VARLIK_WHITE }
   }
   // user

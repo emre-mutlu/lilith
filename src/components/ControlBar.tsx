@@ -136,7 +136,7 @@ export default function ControlBar({
             color: '#D8B4FE',
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: 11, letterSpacing: '0.12em',
-            borderRadius: 3, cursor: 'pointer', textTransform: 'uppercase',
+            borderRadius: 3, cursor: 'pointer',
             transition: 'all 0.18s',
             opacity: (disabled || !userInput.trim()) ? 0.35 : 1,
           }}

@@ -36,9 +36,9 @@ export default function TranscriptStream({ messages, currentWord, onCopy, onDown
           <span style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: 11, letterSpacing: '0.14em',
-            color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.75)',
           }}>
-            Real-time Transcription Stream
+            REAL-TIME TRANSCRIPTION STREAM
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -156,7 +156,7 @@ function TranscriptBtn({ onClick, children }: { onClick: () => void; children: R
       background: 'transparent', border: '1px solid rgba(255,255,255,0.16)',
       color: 'rgba(255,255,255,0.65)', fontFamily: "'JetBrains Mono', monospace",
       fontSize: 10, letterSpacing: '0.08em', padding: '4px 10px',
-      borderRadius: 2, cursor: 'pointer', textTransform: 'uppercase',
+      borderRadius: 2, cursor: 'pointer',
     }}>
       {children}
     </button>

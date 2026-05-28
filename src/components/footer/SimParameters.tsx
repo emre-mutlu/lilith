@@ -23,7 +23,7 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
     return () => clearInterval(t)
   }, [])
 
-  const isGemini = voiceEngine === 'gemini'
+  const isAuto = voiceEngine === 'edge'
 
   return (
     <div style={{
@@ -34,7 +34,7 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
       <div style={{
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: 10, letterSpacing: '0.18em',
-        color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.55)',
         marginBottom: 4,
       }}>
         Simulation Parameters
@@ -51,7 +51,7 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
             padding: '2px 6px', borderRadius: 2, outline: 'none',
           }}
         >
-          <option value="gemini" style={{ background: '#0A0A0A' }}>Gemini-TTS</option>
+          <option value="edge" style={{ background: '#0A0A0A' }}>Edge Neural</option>
           <option value="browser" style={{ background: '#0A0A0A' }}>Sistem</option>
         </select>
       </StatRow>
@@ -75,16 +75,16 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>
         <SliderRow
-          label={isGemini ? 'AI Hızı: Oto' : 'Hız'}
+          label={isAuto ? 'AI Hızı: Oto' : 'Hız'}
           min={0.5} max={1.8} step={0.05}
           value={rate} onChange={setRate}
-          disabled={isGemini} color="#D4AF37"
+          disabled={isAuto} color="#D4AF37"
         />
         <SliderRow
-          label={isGemini ? 'AI Tonu: Oto' : 'Ton'}
+          label={isAuto ? 'AI Tonu: Oto' : 'Ton'}
           min={0.6} max={1.4} step={0.05}
           value={pitch} onChange={setPitch}
-          disabled={isGemini} color="#D0D0D0"
+          disabled={isAuto} color="#D0D0D0"
         />
       </div>
     </div>

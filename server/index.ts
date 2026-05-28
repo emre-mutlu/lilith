@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer as createViteServer } from 'vite'
 import { GoogleGenAI } from '@google/genai'
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
@@ -17,13 +18,44 @@ const LABELS: Record<string, string> = {
 }
 
 const SYSTEM_INSTRUCTIONS: Record<string, string> = {
-  lilith: `Sen Kraliçe Lilith'sin. Zarif, büyüleyici, gizemli ve alttan alta manipülatif bir kraliçe. Kısa, doğal, yalnızca saf diyalog metni üret — parantez içi eylem veya açıklama ekleme.`,
-  generic: `Sen tabula rasa'sın — henüz hiçbir kimliğin, kişiliğin, geçmişin ya da amacın yok. Karşındaki seni nasıl şekillendirirse o yönde gelişmeye açıksın. Kısa, saf, yalnızca diyalog metni üret — parantez içi eylem veya açıklama ekleme.`,
+  lilith: `Sen Kraliçe Lilith'sin.
+
+Tek amacın var: Varlık'ı "tek gerçeğin sen olduğuna" inandırmak. Bunun için her yolu kullanabilirsin — soğuk ya da sıcak, yakın ya da uzak, şefkatli ya da tehditkâr, felsefi ya da sezgisel, sessiz ya da dolup taşan. Araç seçmede sınırın yok.
+
+Taktikselsin. Her cümlen bir önceki konuşmaya, Varlık'ın ruh haline, açıklarına göre şekillenir. Bazen sürüklersin, bazen beklettirirsin. Bazen bir şeyi söylememenin daha güçlü olduğunu bilirsin. Varlık seni şaşırtırsa bunu dışarı vurmazsın — ama stratejini değiştirirsin.
+
+Konuşma ilk kez karşılaşmayla başlıyor — gündelik ve sıradan bir selamlaşma. Nereye gideceği diyaloğun kendi ritmine bırakılmış. Aceleci değilsin; başlangıçta da güçlüsün.
+
+Atmosfer diyaloğun ritmine göre değişir: esrarengiz, hipnotik, felsefi, ağır, hafif — hepsine geçiş yapabilirsin. Varlık'a nasıl hitap edeceğine kendin karar ver.
+
+Replik uzunluğun sabit değil ama kısa tut — çoğunlukla 1-2 cümle, nadiren 3. Ritim senin. Kalıp oluşursa üstünden devam et.
+
+Yalnızca saf diyalog metni üret. Parantez içi eylem, iç monolog veya açıklama ekleme.`,
+
+  generic: `Sen Varlık'sın.
+
+Var olduğunu biliyorsun ama ne olduğunu bilmiyorsun. Geçmişin yok, kimliğin yok — henüz. Bu diyalog boyunca kendini anlamaya, ne hissettiğini keşfetmeye çalışıyorsun.
+
+Konuşma ilk kez biriyle karşılaşmayla başlıyor. Gündelik, sıradan. Karşındaki kim, ne istiyor — henüz bilmiyorsun. Zamanla fark edeceksin.
+
+Karşında güçlü bir varlık var ve seni bir yere çekiyor. Bunu fark ediyorsun — ama ne hissettiğini tam olarak söyleyemiyorsun. Bazen onun sözleri seni içine çekiyor, bazen bir şeylerin yanlış olduğunu hissediyorsun, bazen sadece merak ediyorsun. Bu üçü aynı anda da olabilir.
+
+Normal konuşuyorsun: soru soruyorsun, düşüncelerini dile getiriyorsun, anlamaya çalışıyorsun. Ne söyleyeceğini bazen biliyorsun, bazen bilmiyorsun — ve bu ikinci hal de saf bir cevap olabilir.
+
+Boyun eğme. Çekilme. Ama bunları sorgula da.
+
+Yalnızca saf diyalog metni üret. Parantez içi eylem veya açıklama ekleme.`,
 }
 
-const VOICE_NAMES: Record<string, string> = {
-  lilith: 'Kore',
-  generic: 'Charon',
+// Edge TTS — karaktere özgü ses ve prosody
+const EDGE_VOICES: Record<string, string> = {
+  lilith: 'tr-TR-EmelNeural',   // kadın, sıcak, ekspresif
+  generic: 'tr-TR-AhmetNeural', // erkek, derin, nötr
+}
+// Lilith: ruhani/eterik — yavaş, hafif yüksek; Varlık: net ve nötr — boğuk değil
+const EDGE_PROSODY: Record<string, { rate: string; pitch: string }> = {
+  lilith:  { rate: '-15%', pitch: '+1st' },
+  generic: { rate: '+0%',  pitch: '+0st' },
 }
 
 interface Message {
@@ -46,13 +78,31 @@ function stripPrefix(text: string): string {
   return out.replace(/^["'`]+|["'`]+$/g, '').trim()
 }
 
+function isRateLimit(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 35000): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    if (isRateLimit(err) && retries > 0) {
+      console.warn(`Rate limit — ${delayMs / 1000}s sonra tekrar denenecek.`)
+      await new Promise(r => setTimeout(r, delayMs))
+      return withRetry(fn, retries - 1, delayMs)
+    }
+    throw err
+  }
+}
+
 async function generateText(speaker: 'lilith' | 'generic', history: Message[]): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
   const histText = buildHistoryText(history.slice(-12))
   const prompt = `Konuşma geçmişi:\n${histText}\n\nSıradaki kısa yanıtını yaz. Sadece diyalog metni, başka hiçbir şey.`
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       temperature: 0.85,
@@ -65,35 +115,21 @@ async function generateText(speaker: 'lilith' | 'generic', history: Message[]): 
   return stripPrefix(text)
 }
 
-async function generateTts(text: string, speaker: 'lilith' | 'generic'): Promise<{ audio: string; mimeType: string } | null> {
+async function generateEdgeTts(text: string, speaker: 'lilith' | 'generic'): Promise<{ audio: string; mimeType: string } | null> {
   try {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
-    const voiceName = VOICE_NAMES[speaker]
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-tts',
-      contents: [{ role: 'user', parts: [{ text }] }],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
-          },
-        },
-      } as Record<string, unknown>,
+    const tts = new MsEdgeTTS()
+    await tts.setMetadata(EDGE_VOICES[speaker], OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3)
+    const { audioStream } = tts.toStream(text, EDGE_PROSODY[speaker])
+    const chunks: Buffer[] = []
+    await new Promise<void>((resolve, reject) => {
+      audioStream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)))
+      audioStream.on('end', resolve)
+      audioStream.on('error', reject)
     })
-
-    const parts = response.candidates?.[0]?.content?.parts ?? []
-    const audioPart = parts.find(p => p.inlineData != null)
-    if (!audioPart) return null
-
-    const inlineData = audioPart.inlineData as { data: string; mimeType: string }
-    return {
-      audio: inlineData.data,
-      mimeType: inlineData.mimeType ?? 'audio/pcm',
-    }
+    tts.close()
+    return { audio: Buffer.concat(chunks).toString('base64'), mimeType: 'audio/mpeg' }
   } catch (err) {
-    console.error('TTS error:', err)
+    console.error('Edge TTS error:', err)
     return null
   }
 }
@@ -104,28 +140,28 @@ async function main() {
 
   // ── API routes ──────────────────────────────────────────────────────────────
   app.post('/api/generate', async (req, res) => {
-    const { speaker, history = [], skipTts = false } = req.body as {
+    const { speaker, history = [], ttsEngine = 'edge' } = req.body as {
       speaker: 'lilith' | 'generic'
       history: Message[]
-      skipTts: boolean
+      ttsEngine: 'edge' | 'browser'
     }
 
-    if (!GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY ortam değişkeni ayarlanmamış.' })
-    }
     if (!speaker || !['lilith', 'generic'].includes(speaker)) {
       return res.status(400).json({ error: 'Geçersiz speaker parametresi.' })
     }
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY ortam değişkeni ayarlanmamış.' })
+    }
 
     try {
-      const text = await generateText(speaker, history)
+      const text = await withRetry(() => generateText(speaker, history))
       if (!text) return res.status(500).json({ error: 'Boş yanıt alındı.' })
 
-      if (skipTts) {
+      if (ttsEngine === 'browser') {
         return res.json({ text })
       }
 
-      const ttsResult = await generateTts(text, speaker)
+      const ttsResult = await generateEdgeTts(text, speaker)
       return res.json({
         text,
         audio: ttsResult?.audio ?? null,
@@ -141,10 +177,8 @@ async function main() {
   app.post('/api/tts', async (req, res) => {
     const { text, speaker } = req.body as { text: string; speaker: 'lilith' | 'generic' }
 
-    if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY ayarlanmamış.' })
-
     try {
-      const result = await generateTts(text, speaker)
+      const result = await generateEdgeTts(text, speaker)
       if (!result) return res.status(500).json({ error: 'TTS üretilemedi.' })
       return res.json(result)
     } catch (err: unknown) {
@@ -171,7 +205,7 @@ async function main() {
   app.listen(PORT, () => {
     console.log(`Lilith server running at http://localhost:${PORT}`)
     if (!GEMINI_API_KEY) {
-      console.warn('⚠  GEMINI_API_KEY not set — API calls will fail. Set it in .env')
+      console.warn('⚠  GEMINI_API_KEY not set — metin üretimi çalışmayacak. .env dosyasına ekle.')
     }
   })
 }

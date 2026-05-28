@@ -18,9 +18,9 @@ export default function Header({ sentiment, sentimentRgb, activeSpeaker }: Props
         <div style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 9, letterSpacing: '0.22em',
-          color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.40)',
         }}>
-          Project Simulation: 08-B
+          PROJECT SIMULATION: 08-B
         </div>
         <h1 style={{
           fontFamily: "'Playfair Display', serif",
@@ -79,10 +79,9 @@ function StatusDot({ label, color, active }: { label: string; color: string; act
         fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5,
         letterSpacing: '0.12em',
         color: active ? color : 'rgba(255,255,255,0.50)',
-        textTransform: 'uppercase',
         transition: 'color 0.5s',
       }}>
-        {label}
+        {label.toUpperCase()}
       </span>
     </div>
   )

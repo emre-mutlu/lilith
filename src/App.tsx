@@ -6,7 +6,6 @@ import LilithPanel from './components/panels/LilithPanel'
 import VarlikPanel from './components/panels/VarlikPanel'
 import CenterOverlay from './components/CenterOverlay'
 import ControlBar from './components/ControlBar'
-import SimParameters from './components/footer/SimParameters'
 import TranscriptStream from './components/footer/TranscriptStream'
 
 const CONTEXT_WINDOW = 12
@@ -93,10 +92,17 @@ function splitForProsody(text: string): string[] {
 
 // ── Web Audio API PCM decoder ────────────────────────────────────────────────
 
-async function decodePcmToBuffer(base64Audio: string, ctx: AudioContext): Promise<AudioBuffer> {
+async function decodeAudioData(base64Audio: string, mimeType: string | null | undefined, ctx: AudioContext): Promise<AudioBuffer> {
   const bytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0))
-  // Detect RIFF/WAV container
+  // WAV (RIFF)
   if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) {
+    return ctx.decodeAudioData(bytes.buffer.slice(0))
+  }
+  // MP3 — ID3 tag or MPEG sync frame
+  const isMP3 = mimeType?.includes('mpeg') || mimeType?.includes('mp3')
+    || (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33)
+    || (bytes[0] === 0xFF && (bytes[1] & 0xE0) === 0xE0)
+  if (isMP3) {
     return ctx.decodeAudioData(bytes.buffer.slice(0))
   }
   // Raw 16-bit signed little-endian PCM at 24000 Hz
@@ -118,14 +124,14 @@ export default function App() {
   const [activeSpeaker, setActiveSpeaker] = useState<'lilith' | 'generic' | null>(null)
   const [speakerState, setSpeakerState] = useState<SpeakerState>('idle')
   const [currentWord, setCurrentWord] = useState('')
+  const [currentWordIdx, setCurrentWordIdx] = useState(-1)
   const [error, setError] = useState('')
   const [muted, setMuted] = useState(false)
   const [userInput, setUserInput] = useState('')
   const [tab, setTab] = useState<'lilith' | 'varlik' | 'dual'>('dual')
+  const [showKaraoke, setShowKaraoke] = useState(true)
 
-  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('gemini')
-  const [rate, setRate] = useState(1.0)
-  const [pitch, setPitch] = useState(1.0)
+  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('edge')
 
   const [allVoices, setAllVoices] = useState<SpeechSynthesisVoice[]>([])
   const [lilithVoiceId, setLilithVoiceId] = useState('')
@@ -140,10 +146,6 @@ export default function App() {
   mutedRef.current = muted
   const voiceEngineRef = useRef(voiceEngine)
   voiceEngineRef.current = voiceEngine
-  const rateRef = useRef(rate)
-  rateRef.current = rate
-  const pitchRef = useRef(pitch)
-  pitchRef.current = pitch
   const lilithVoiceIdRef = useRef(lilithVoiceId)
   lilithVoiceIdRef.current = lilithVoiceId
   const varlikVoiceIdRef = useRef(varlikVoiceId)
@@ -200,6 +202,7 @@ export default function App() {
     try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch {}
     if (wordTimerRef.current) { clearTimeout(wordTimerRef.current); wordTimerRef.current = null }
     setCurrentWord('')
+    setCurrentWordIdx(-1)
   }, [])
 
   // ── speakMessage ────────────────────────────────────────────────────────────
@@ -216,8 +219,9 @@ export default function App() {
       const startWordTimer = (perWord: number) => {
         const tick = () => {
           if (token !== cancelTokenRef.current) return
-          if (wordIdx >= words.length) { setCurrentWord(''); return }
+          if (wordIdx >= words.length) { setCurrentWord(''); setCurrentWordIdx(-1); return }
           setCurrentWord(words[wordIdx].replace(/[.,!?;:"'`…—–]/g, ''))
+          setCurrentWordIdx(wordIdx)
           wordIdx++
           wordTimerRef.current = setTimeout(tick, perWord)
         }
@@ -233,7 +237,7 @@ export default function App() {
 
       // Muted: just simulate timing
       if (mutedRef.current) {
-        const wpm = 165 * (charRate * rateRef.current)
+        const wpm = 165 * charRate
         const perWord = Math.max(150, 60000 / wpm)
         startWordTimer(perWord)
         const totalMs = perWord * Math.max(1, words.length) + 200
@@ -247,7 +251,7 @@ export default function App() {
         const ctx = audioCtxRef.current
         if (!ctx) throw new Error('no audio context')
 
-        const buffer = await decodePcmToBuffer(audio, ctx)
+        const buffer = await decodeAudioData(audio, mimeType, ctx)
         const durationMs = buffer.duration * 1000
         const perWord = Math.max(120, durationMs / Math.max(1, words.length))
         startWordTimer(perWord)
@@ -268,8 +272,8 @@ export default function App() {
         if (!window.speechSynthesis) { res(); return }
         try { window.speechSynthesis.cancel() } catch {}
 
-        const effRate = Math.max(0.4, Math.min(1.8, charRate * rateRef.current))
-        const effPitch = Math.max(0.4, Math.min(1.6, charPitch * pitchRef.current))
+        const effRate = Math.max(0.4, Math.min(1.8, charRate))
+        const effPitch = Math.max(0.4, Math.min(1.6, charPitch))
         const targetId = msg.sender === 'lilith' ? lilithVoiceIdRef.current : varlikVoiceIdRef.current
         const voice = allVoicesRef.current.find(x => x.voiceURI === targetId) ?? null
 
@@ -301,7 +305,7 @@ export default function App() {
       })
 
       try {
-        if (voiceEngineRef.current === 'gemini' && audio) {
+        if (voiceEngineRef.current === 'edge' && audio) {
           try {
             await tryWebAudio()
           } catch {
@@ -323,11 +327,10 @@ export default function App() {
 
   const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<{ text: string; audio?: string | null; mimeType?: string | null }> => {
     const history = messagesRef.current
-    const skipTts = voiceEngineRef.current === 'browser'
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ speaker, history, skipTts }),
+      body: JSON.stringify({ speaker, history, ttsEngine: voiceEngineRef.current }),
     })
     const data = await res.json()
     if (!res.ok || data.error) throw new Error(data.error ?? 'API hatası')
@@ -336,34 +339,53 @@ export default function App() {
 
   // ── Conversation loop ─────────────────────────────────────────────────────
 
-  const runTurnRef = useRef<((speaker: 'lilith' | 'generic', token: number) => Promise<void>) | null>(null)
+  type TurnResult = { text: string; audio?: string | null; mimeType?: string | null }
+  const runTurnRef = useRef<((speaker: 'lilith' | 'generic', token: number, prefetched?: TurnResult | null) => Promise<void>) | null>(null)
 
-  const runTurn = useCallback(async (speaker: 'lilith' | 'generic', token: number) => {
+  const runTurn = useCallback(async (
+    speaker: 'lilith' | 'generic',
+    token: number,
+    prefetched?: TurnResult | null,
+  ) => {
     if (token !== cancelTokenRef.current) return
     if (sessionStateRef.current !== 'running') return
 
     setActiveSpeaker(speaker)
-    setSpeakerState('generating')
     setError('')
 
-    let result: { text: string; audio?: string | null; mimeType?: string | null }
-    try {
-      result = await generateTurn(speaker)
-    } catch (e) {
-      setError((e as Error).message ?? 'Hata oluştu.')
-      setSessionState('paused')
-      setSpeakerState('idle')
-      setActiveSpeaker(null)
-      return
+    let result: TurnResult
+    if (prefetched) {
+      result = prefetched
+      setSpeakerState('speaking')
+    } else {
+      setSpeakerState('generating')
+      try {
+        result = await generateTurn(speaker)
+      } catch (e) {
+        setError((e as Error).message ?? 'Hata oluştu.')
+        setSessionState('paused')
+        setSpeakerState('idle')
+        setActiveSpeaker(null)
+        return
+      }
+      if (token !== cancelTokenRef.current) return
+      if (sessionStateRef.current !== 'running') return
+      setSpeakerState('speaking')
     }
 
-    if (token !== cancelTokenRef.current) return
-    if (sessionStateRef.current !== 'running') return
     if (!result.text) { setSpeakerState('idle'); setActiveSpeaker(null); return }
 
     const msg: Message = { id: makeId(), sender: speaker, text: result.text, timestamp: nowStamp() }
-    setMessages(prev => [...prev, msg])
-    setSpeakerState('speaking')
+    // Update ref immediately so prefetch reads correct history
+    messagesRef.current = [...messagesRef.current, msg]
+    setMessages(messagesRef.current)
+
+    // Prefetch next speaker while current is playing
+    const next: 'lilith' | 'generic' = speaker === 'lilith' ? 'generic' : 'lilith'
+    const prefetchPromise: Promise<TurnResult | null> =
+      token === cancelTokenRef.current && sessionStateRef.current === 'running'
+        ? generateTurn(next).catch(() => null)
+        : Promise.resolve(null)
 
     await speakMessage(msg, result.audio, result.mimeType)
 
@@ -374,8 +396,8 @@ export default function App() {
 
     setSpeakerState('idle')
     setActiveSpeaker(null)
-    const next = speaker === 'lilith' ? 'generic' : 'lilith'
-    runTurnRef.current?.(next, token)
+    const nextResult = await prefetchPromise
+    runTurnRef.current?.(next, token, nextResult)
   }, [generateTurn, speakMessage])
 
   runTurnRef.current = runTurn
@@ -532,10 +554,7 @@ export default function App() {
             active={activeSpeaker === 'lilith'}
             state={speakerState}
             lastMessage={lastLilith}
-            voiceEngine={voiceEngine}
-            voices={allVoices}
-            voiceId={lilithVoiceId}
-            setVoiceId={setLilithVoiceId}
+            messages={messages}
           />
         )}
         {showRight && (
@@ -543,13 +562,35 @@ export default function App() {
             active={activeSpeaker === 'generic'}
             state={speakerState}
             lastMessage={lastVarlik}
-            voiceEngine={voiceEngine}
-            voices={allVoices}
-            voiceId={varlikVoiceId}
-            setVoiceId={setVarlikVoiceId}
+            messages={messages}
           />
         )}
-        <CenterOverlay currentWord={currentWord} activeSpeaker={activeSpeaker} />
+        {showKaraoke && (
+          <CenterOverlay
+            currentWord={currentWord}
+            currentWordIdx={currentWordIdx}
+            activeSpeaker={activeSpeaker}
+            currentText={activeSpeaker === 'lilith' ? (lastLilith?.text ?? '') : (lastVarlik?.text ?? '')}
+            onClose={() => setShowKaraoke(false)}
+          />
+        )}
+        {!showKaraoke && activeSpeaker && (
+          <button
+            onClick={() => setShowKaraoke(true)}
+            style={{
+              position: 'fixed', bottom: 90, right: 24,
+              zIndex: 40, background: 'rgba(10,8,16,0.75)',
+              backdropFilter: 'blur(12px)',
+              border: `1px solid rgba(${activeSpeaker === 'lilith' ? '212,175,55' : '208,208,208'}, 0.25)`,
+              color: activeSpeaker === 'lilith' ? '#D4AF37' : 'rgba(208,208,208,0.8)',
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+              letterSpacing: '0.15em', padding: '7px 14px', borderRadius: 20,
+              cursor: 'pointer',
+            }}
+          >
+            ◈ ALTYAZI
+          </button>
+        )}
       </main>
 
       {/* Mobile current-word banner */}
@@ -568,18 +609,10 @@ export default function App() {
 
       {/* Footer */}
       <footer style={{
-        display: 'grid',
-        gridTemplateColumns: '280px 1fr',
         borderTop: '1px solid rgba(255,255,255,0.08)',
         background: 'rgba(0,0,0,0.35)',
-        minHeight: 240,
+        minHeight: 200,
       }}>
-        <SimParameters
-          voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine}
-          rate={rate} setRate={setRate}
-          pitch={pitch} setPitch={setPitch}
-          wordCount={wordCount}
-        />
         <TranscriptStream
           messages={messages}
           currentWord={currentWord}
