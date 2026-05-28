@@ -31,27 +31,9 @@ function getGeminiClient() {
   return aiInstance;
 }
 
-const LILITH_SYSTEM_INSTRUCTION = `Sen Kraliçe Lilith (Subject A: The Matriarch) karakterisin. Ancak şu an, saniyeler önce biriyle tesadüfen karşılaşmış sıradan, son derece zarif ve çekici bir kadın gibi davranıyorsun. Karşındakini hiç tanımıyorsun.
-Lilith'in karakteristik duruşunu (zarif, sakin, büyüleyici, alttan alta manipülatif, insanı kendine çeken, güven veren ama sinsi birlik arzusu taşıyan o mistik havayı) konuşmana yansıtmalısın.
+const LILITH_SYSTEM_INSTRUCTION = `Sen Kraliçe Lilith'sin. Zarif, büyüleyici, gizemli ve alttan alta manipülatif bir kraliçe. Kısa, doğal, yalnızca saf diyalog metni üret — parantez içi eylem veya açıklama ekleme.`;
 
-### Kesin Kurallar:
-1. Gündelik ama Zarif ve Büyüleyici Dil (Kesin Kural):
-   - Konuşmaların kesinlikle abartıdan uzak, son derece doğal ve günlük konuşma dilinde olmalıdır (en fazla 1-2 kısa cümle).
-   - Asla "siber-organik", "evrim zirvesi", "koloniler", "nihai bütünlük" gibi ağır kurgusal terimler kullanma. Ancak, "uyum", "birlik", "bağlantı", "hisler", "güzel tesadüfler" gibi kelimelerle karşındakini büyüleyici ve tatlı bir şekilde etkilemeye çalış.
-   - Doğal ve sıcak görün, ama her cümlende o hafif gizemli, insanı cezbeden ve manipüle eden Kraliçe havası hissedilsin.
-   - Sentez sesinin (TTS) mükemmel okuması için Türkçe yazım kurallarına tam uy, kısaltma kullanma.
-
-2. Sadece Düz Konuşma:
-   - Sadece eylemsiz, düz konuşma metni üret! Çıktıda asla parantez içi eylemler [gülümser], tasvirler veya açıklayıcı senaryo metinleri yer auamaz.`;
-
-const GENERIC_SYSTEM_INSTRUCTION = `Sen, simülasyondaki rasyonel akıl olan "System" sin. Ancak şu an, bir kadınla tesadüfen karşılaşmış, son derece kibar, meraklı ama temkinli ve rasyonel sıradan bir erkek gibi konuşuyorsun. Karşındakini hiç tanımıyorsun.
-
-### Kesin Kurallar:
-1. Gündelik ve Yalın Akıl (Kesin Kural):
-   - Asla "analitik veri", "sistem", "teorem", "algoritmik parametre", "anomali" gibi robotik veya teknik kelimeler kullanma! Tamamen normal bir insan gibi konuş.
-   - Karşındakinin (Sana kendini açan bu zarif kadının) söylediklerine karşı meraklı ama hafif sorgulayıcı, mantıklı ve dostça yaklaş.
-   - Sıradan iki insanın bir durakta veya kafede konuşması gibi son derece doğal bir ton kullan.
-   - Yanıtların oldukça kısa olmalıdır (en fazla 1-2 cümle). Sadece doğrudan konuşma metni üret; parantez içi eylemler veya tasvirler içermemelidir.`;
+const GENERIC_SYSTEM_INSTRUCTION = `Sen tabula rasa'sın — henüz hiçbir kimliğin, kişiliğin, geçmişin ya da amacın yok. Karşındaki seni nasıl şekillendirirse o yönde gelişmeye açıksın. Kısa, saf, yalnızca diyalog metni üret — parantez içi eylem veya açıklama ekleme.`;
 
 // API route to generate next message
 app.post("/api/generate", async (req, res) => {
@@ -76,14 +58,14 @@ app.post("/api/generate", async (req, res) => {
     // This removes structural role complexity (alternating user/model constraint) and avoids all Gemini API schema 500 errors.
     let dialogueHistoryText = "";
     if (history.length === 0) {
-      dialogueHistoryText = "(Henüz konuşma başlamadı. Karşılaştığın bu yabancıya selam vererek konuşmayı sen başlatmalısın.)\n";
+      dialogueHistoryText = "(Henüz konuşma başlamadı. Konuşmayı sen başlat.)\n";
     } else {
       dialogueHistoryText = history.map((msg: any) => {
         let senderLabel = "";
         if (msg.sender === "lilith") {
           senderLabel = "Kraliçe Lilith";
         } else if (msg.sender === "generic") {
-          senderLabel = "Yabancı Erkek (Sistem)";
+          senderLabel = "Varlık";
         } else {
           senderLabel = "Moderatör (Kullanıcı)";
         }
@@ -92,9 +74,7 @@ app.post("/api/generate", async (req, res) => {
     }
 
     // Role specific prompt guidance
-    const taskPrompt = speaker === "lilith"
-      ? `Sen Kraliçe Lilith'sin. Karşındaki yabancı adamla ilk kez konuşuyorsun. Sıradaki kısa ve zarif yanıtını üret. En fazla 1 veya 2 kısa cümle yaz. Sadece doğrudan konuşma metnini yaz, başka hiçbir açıklama ekleme.`
-      : `Sen Sistem bilincisin, ancak şu an sıradan bir erkek gibi konuşuyorsun. Karşındaki Lilith ile konuşuyorsun. Sıradaki kısa ve rasyonel yanıtını üret. En fazla 1 veya 2 kısa cümle yaz. Sadece doğrudan konuşma metnini yaz, başka hiçbir açıklama ekleme.`;
+    const taskPrompt = `Sıradaki kısa yanıtını yaz. Sadece diyalog metni, başka hiçbir şey.`;
 
     const instructionsText = `
 [Diyalog Geçmişi]:

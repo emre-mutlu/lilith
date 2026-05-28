@@ -96,9 +96,9 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
               senderBg = "bg-fuchsia-950/20 hover:bg-fuchsia-950/30 border-fuchsia-900/40 text-fuchsia-100 shadow-[inset_0_1px_3px_rgba(217,70,239,0.05)]";
               avatarEmoji = "👸";
             } else if (msg.sender === "generic") {
-              senderName = "Standart AI";
-              senderBg = "bg-cyan-950/20 hover:bg-cyan-950/30 border-cyan-900/40 text-cyan-100 shadow-[inset_0_1px_3px_rgba(6,182,212,0.05)]";
-              avatarEmoji = "🤖";
+              senderName = "Varlık";
+              senderBg = "bg-white/[0.03] hover:bg-white/[0.05] border-white/10 text-white/70";
+              avatarEmoji = "○";
             }
 
             return (
@@ -112,7 +112,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
                     ? "bg-fuchsia-950 border-fuchsia-700/50"
                     : isUser
                     ? "bg-slate-800 border-slate-700"
-                    : "bg-cyan-950 border-cyan-700/50"
+                    : "bg-white/5 border-white/10"
                 }`}>
                   {avatarEmoji}
                 </div>
@@ -144,8 +144,8 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
       <div className="px-6 py-3 border-t border-slate-900 bg-slate-950 text-center text-slate-500 text-[10px] uppercase tracking-wider font-mono">
         {activeSpeaker ? (
           <span className="flex items-center justify-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${activeSpeaker === 'lilith' ? 'bg-fuchsia-500' : 'bg-cyan-500'} animate-ping`} />
-            Aktif Söz hakkı: {activeSpeaker === "lilith" ? "Kraliçe Lilith" : "Standart Yapay Zeka"}
+            <span className={`w-1.5 h-1.5 rounded-full ${activeSpeaker === 'lilith' ? 'bg-fuchsia-500' : 'bg-white/50'} animate-ping`} />
+            Aktif Söz hakkı: {activeSpeaker === "lilith" ? "Kraliçe Lilith" : "Varlık"}
           </span>
         ) : (
           <span>Diyalog Duruyor</span>

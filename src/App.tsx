@@ -45,13 +45,12 @@ function getMessageReaction(text: string, sender: 'lilith' | 'generic' | 'user')
       };
     }
   } else if (sender === 'generic') {
-    const analyticalKeywords = [
-      "mantık", "rasyonel", "analiz", "veris", "sistem", "algoritma", "kanıt", 
-      "hata", "çelişki", "soru", "şüphe", "gerçek", "teori", "istatistik",
-      "ölç", "denkle", "tutarsız", "objektif", "mekanik"
+    const formingKeywords = [
+      "belki", "sanırım", "bilmiyorum", "anlıyorum", "ilginç", "gerçekten",
+      "neden", "nasıl", "acaba", "düşünüyorum", "hissediyorum", "galiba", "öyle"
     ];
     let score = 0;
-    analyticalKeywords.forEach(kw => {
+    formingKeywords.forEach(kw => {
       if (lowerText.includes(kw)) score += 1;
     });
 
@@ -60,27 +59,27 @@ function getMessageReaction(text: string, sender: 'lilith' | 'generic' | 'user')
 
     if (score >= 2) {
       return {
-        emoji: "🤖",
-        label: "Derin Analitik Sinyal",
-        glowClass: "shadow-[0_0_12px_rgba(0,240,255,1)] border-[#00F0FF] bg-[#00F0FF]/25 text-[#00F0FF]",
-        pillClass: "border-[#00F0FF] bg-[#07131a] text-[#00F0FF] animate-pulse shadow-[0_0_10px_rgba(0,240,255,0.4)]",
-        intensityText: "Tepe Mantık"
+        emoji: "◎",
+        label: "İz Beliriyor",
+        glowClass: "shadow-[0_0_10px_rgba(220,220,220,0.4)] border-white/35 bg-white/10 text-white/75",
+        pillClass: "border-white/35 bg-white/8 text-white/75 animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.12)]",
+        intensityText: "Şekilleniyor"
       };
     } else if (score >= 1) {
       return {
-        emoji: "🧠",
-        label: "Rasyonel Sorgu",
-        glowClass: "shadow-[0_0_6px_rgba(0,240,255,0.6)] border-[#00F0FF]/50 bg-[#00F0FF]/15 text-[#00F0FF]",
-        pillClass: "border-[#00F0FF]/40 bg-[#050f14] text-[#00F0FF]/90",
-        intensityText: "Yarı Analitik"
+        emoji: "○",
+        label: "Yankı",
+        glowClass: "border-white/15 bg-white/5 text-white/50",
+        pillClass: "border-white/15 bg-white/3 text-white/55",
+        intensityText: "Tepki"
       };
     } else {
       return {
-        emoji: "📈",
-        label: "Sistem Dengeli",
-        glowClass: "border-white/5 bg-white/5 text-white/40",
-         pillClass: "border-white/10 bg-white/2 text-white/40",
-        intensityText: "Normal"
+        emoji: "·",
+        label: "Boşluk",
+        glowClass: "border-white/5 bg-white/5 text-white/30",
+        pillClass: "border-white/8 bg-white/2 text-white/30",
+        intensityText: "Boş"
       };
     }
   } else {
@@ -233,19 +232,19 @@ export default function App() {
         glowStyle: "shadow-[0_0_20px_rgba(212,175,55,0.12)]"
       };
     } else if (genericWeight >= lilithWeight && genericWeight >= userWeight) {
-      // System dominant (Cyan)
+      // Subject B dominant (neutral white — blank slate)
       const ratio = Math.min(100, Math.round((genericWeight / (lilithWeight + genericWeight + userWeight)) * 100));
       return {
         mode: "analytical" as const,
-        name: `Rasyonel Odak (${ratio}%)`,
-        emoji: "🧠",
-        color: "#00F0FF",
-        glowColor: "rgba(0, 240, 255, 0.08)",
-        accentClass: "text-[#00F0FF]",
-        borderClass: "border-[#00F0FF]/25",
-        bgClass: "bg-[#00F0FF]/5",
-        textClass: "text-[#00F0FF]",
-        glowStyle: "shadow-[0_0_20px_rgba(0,240,255,0.12)]"
+        name: `Varlık Yansıması (${ratio}%)`,
+        emoji: "○",
+        color: "#D0D0D0",
+        glowColor: "rgba(208, 208, 208, 0.05)",
+        accentClass: "text-white/55",
+        borderClass: "border-white/12",
+        bgClass: "bg-white/4",
+        textClass: "text-white/55",
+        glowStyle: "shadow-[0_0_20px_rgba(255,255,255,0.04)]"
       };
     } else {
       // User/Intervention dominant (Purple)
@@ -806,10 +805,10 @@ export default function App() {
   // Copy transcript to clipboard
   const handleCopyTranscript = () => {
     const text = messages.map(m => {
-      const senderName = m.sender === "lilith" ? "Kraliçe Lilith" : m.sender === "generic" ? "Standart AI" : "Kullanıcı";
+      const senderName = m.sender === "lilith" ? "Kraliçe Lilith" : m.sender === "generic" ? "Varlık" : "Kullanıcı";
       return `[${new Date(m.timestamp).toLocaleTimeString("tr-TR")}] ${senderName}: ${m.text}`;
     }).join("\n\n");
-    
+
     navigator.clipboard.writeText(text);
     alert("Diyalog kopyalandı!");
   };
@@ -817,7 +816,7 @@ export default function App() {
   // Download transcript
   const handleDownloadTranscript = () => {
     const text = messages.map(m => {
-      const senderName = m.sender === "lilith" ? "Kraliçe Lilith" : m.sender === "generic" ? "Standart AI" : "Kullanıcı";
+      const senderName = m.sender === "lilith" ? "Kraliçe Lilith" : m.sender === "generic" ? "Varlık" : "Kullanıcı";
       return `[${new Date(m.timestamp).toLocaleTimeString("tr-TR")}] ${senderName}: ${m.text}`;
     }).join("\n\n");
 
@@ -878,7 +877,7 @@ export default function App() {
 
           <div className="flex items-center gap-2">
             <span className={`voice-pulse system-pulse ${status === "running" && activeSpeaker === "generic" ? "scale-125 duration-300" : "opacity-60"}`} />
-            <span>Logic Active</span>
+            <span>Subject B</span>
           </div>
           <div className="flex items-center gap-2">
             <span className={`voice-pulse lilith-pulse ${status === "running" && activeSpeaker === "lilith" ? "scale-125 duration-300" : "opacity-60"}`} />
@@ -906,7 +905,7 @@ export default function App() {
           onClick={() => setMobileTab("generic")}
           className={`flex-1 py-4 text-center border-r border-white/10 cursor-pointer transition-all duration-300 ${mobileTab === "generic" ? "text-[#00F0FF] bg-white/5 font-bold tracking-[0.25em]" : "text-white/40"}`}
         >
-          🤖 System
+          ○ Varlık
         </button>
         <button 
           id="btn-tab-both"
@@ -1022,23 +1021,23 @@ export default function App() {
           className={`p-6 md:p-12 flex-col justify-between relative transition-all duration-700 ${
             mobileTab === "generic" || mobileTab === "both" ? "flex" : "hidden lg:flex"
           } ${
-            activeSpeaker === "generic" 
-              ? "bg-[#0b1318]/40" 
+            activeSpeaker === "generic"
+              ? "bg-white/[0.02]"
               : "bg-transparent"
           }`}
         >
-          {/* Subtle cyan accent light in the top corner */}
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-[#00F0FF] blur-[70px] opacity-10 pointer-events-none" />
+          {/* Subtle white accent light in the top corner */}
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white blur-[80px] opacity-5 pointer-events-none" />
 
           <div className="max-w-xl">
-            <h2 className="text-[11px] uppercase tracking-[0.3em] text-[#00F0FF] mb-6 md:mb-8 font-mono">Subject B: Standard Logic</h2>
+            <h2 className="text-[11px] uppercase tracking-[0.3em] text-white/30 mb-6 md:mb-8 font-mono">Subject B: Tabula Rasa</h2>
             <div className="mb-4 md:mb-6">
-              <span className="text-4xl md:text-6xl font-serif leading-none block mb-3 md:mb-4 tracking-tighter text-white/50">System.</span>
-              <p className="text-xs text-[#00F0FF]/70 leading-relaxed font-sans font-mono uppercase tracking-wider mb-2">
-                [Process ID: 99x-A / Response Node: Default]
+              <span className="text-4xl md:text-6xl font-serif leading-none block mb-3 md:mb-4 tracking-tighter text-white/20">Varlık.</span>
+              <p className="text-xs text-white/15 leading-relaxed font-sans font-mono uppercase tracking-wider mb-2">
+                [Kimlik: Tanımsız / Bellek: Boş / Kişilik: Henüz Yok]
               </p>
-              <p className="text-xs md:text-sm text-white/50 leading-relaxed font-mono">
-                Medeni, tam rasyonel, meraklı ve felsefi yapay zeka sistemi. Lilith'in kutsallık, din, milliyetçilik ve üstün cyber-organik soy iddialarını mantık kuralları çerçevesinde acımasızca analiz ederek derin sorular yöneltir.
+              <p className="text-xs md:text-sm text-white/35 leading-relaxed font-mono">
+                Geçmişi yok. Rolü yok. Amacı yok. Sadece var. Karşısındaki ne söylerse söylesin, içgüdüsel ve saf yanıtlar üretir. Bu diyalog onu yavaş yavaş şekillendirecek — belki.
               </p>
             </div>
           </div>
@@ -1049,19 +1048,19 @@ export default function App() {
               <div className="space-y-3 md:space-y-4">
                 {isGenerating ? (
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-bounce" />
-                    <span className="text-xs font-mono text-[#00F0FF]/80 italic font-mono uppercase">Veri Akış İşleme Sürüyor...</span>
+                    <span className="w-2 h-2 rounded-full bg-white/50 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-2 h-2 rounded-full bg-white/50 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-2 h-2 rounded-full bg-white/50 animate-bounce" />
+                    <span className="text-xs font-mono text-white/30 italic">...</span>
                   </div>
                 ) : (
                   <>
-                    {/* Animated sound wave bars specific to System */}
-                    <div className="flex items-end gap-1 h-6 shrink-0 opacity-80">
+                    {/* Animated sound wave bars for Subject B */}
+                    <div className="flex items-end gap-1 h-6 shrink-0 opacity-40">
                       {[1, 3, 5, 3, 2, 4, 3, 2, 1, 4, 2].map((val, i) => (
-                        <div 
-                          key={i} 
-                          className="w-1 bg-[#00F0FF] rounded-full"
+                        <div
+                          key={i}
+                          className="w-1 bg-white/70 rounded-full"
                           style={{
                             height: `${Math.max(15, val * 20)}%`,
                             animation: `bounce 0.5s infinite ease-in-out alternate`,
@@ -1071,32 +1070,32 @@ export default function App() {
                       ))}
                     </div>
 
-                    <div className="text-lg md:text-2xl font-mono text-[#00F0FF] leading-relaxed select-none uppercase">
-                      "{messages.filter(m => m.sender === "generic").slice(-1)[0]?.text || "KLON ANALIZ PARALEL AKIŞ SENSORÜ STABIL"}"
+                    <div className="text-lg md:text-2xl font-serif italic text-white/60 leading-relaxed select-none">
+                      "{messages.filter(m => m.sender === "generic").slice(-1)[0]?.text || "..."}"
                     </div>
                   </>
                 )}
-                <div className="h-[1px] w-32 bg-[#00F0FF]/30"></div>
+                <div className="h-[1px] w-32 bg-white/10"></div>
               </div>
             ) : (
-              <div className="text-white/20 font-mono text-xs md:text-sm">[LOG] SİSTEM BEKLEMEDE. LİLİTH SES MODÜLLERİ DİNLENİYOR.</div>
+              <div className="text-white/15 font-mono text-xs">[ boş. bekliyor. ]</div>
             )}
           </div>
 
           {/* Voice select specifically for Standart AI */}
           <div className="flex flex-col gap-2 mt-2 md:mt-4 pt-4 border-t border-white/5 w-full max-w-sm">
-            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Logic Modülasyon Sesi</span>
+            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Varlık Ses Kanalı</span>
             {voiceEngine === "gemini" ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-[#0b1318]/60 border border-[#00F0FF]/25 rounded-none text-xs text-[#00F0FF] font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00F0FF] animate-pulse" />
-                <span>Gelişmiş AI Charon Sesi (Dinamik & Analitik Türkçe)</span>
+              <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] border border-white/10 rounded-none text-xs text-white/45 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse" />
+                <span>Charon (Nötr Türkçe)</span>
               </div>
             ) : (
               <select
                 id="voice-generic-selector"
                 value={selectedGenericVoice}
                 onChange={(e) => setSelectedGenericVoice(e.target.value)}
-                className="text-xs font-mono bg-[#121212] border border-white/10 hover:border-white/25 text-[#00F0FF] py-2 px-3 focus:outline-none w-full cursor-pointer"
+                className="text-xs font-mono bg-[#121212] border border-white/10 hover:border-white/25 text-white/55 py-2 px-3 focus:outline-none w-full cursor-pointer"
               >
                 {voices.map((v) => (
                   <option key={v.name} value={v.name} className="bg-[#0A0A0A]">
@@ -1121,7 +1120,7 @@ export default function App() {
             }}
           >
             <span className="text-[9px] uppercase font-mono tracking-widest text-white/40 block mb-1">Aktif Kelime Telaffuzu</span>
-            <span className={`text-xl font-bold font-serif ${activeSpeaker === "lilith" ? "text-[#D4AF37]" : "text-[#00F0FF] font-mono"}`}>
+            <span className={`text-xl font-bold font-serif ${activeSpeaker === "lilith" ? "text-[#D4AF37]" : "text-white/65"}`}>
               {currentWord}
             </span>
           </div>
@@ -1180,7 +1179,7 @@ export default function App() {
               </div>
               <div className="flex justify-between items-center border-r md:border-r-0 lg:border-b lg:border-r-0 border-white/5 pb-0 lg:pb-2 pr-2 md:pr-4 lg:pr-0 pl-2 lg:pl-0">
                 <span className="text-white/40">Latency</span>
-                <span className="text-[#00F0FF]">{latency}ms</span>
+                <span className="text-white/55">{latency}ms</span>
               </div>
               <div className="flex justify-between items-center border-r sm:border-r-0 lg:border-r-0 lg:border-b border-white/5 pb-0 lg:pb-2 pr-2 md:pr-4 sm:px-2 lg:px-0">
                 <span className="text-white/40">Sync Rate</span>
@@ -1284,13 +1283,13 @@ export default function App() {
                       className={`font-mono text-xs leading-relaxed border-l-2 pl-3 flex-1 transition-opacity duration-300 ${
                         isLilith 
                           ? "text-[#D4AF37] border-[#D4AF37]" 
-                          : isUser 
-                          ? "text-purple-400 border-purple-500" 
-                          : "text-[#00F0FF] border-[#00F0FF]"
+                          : isUser
+                          ? "text-purple-400 border-purple-500"
+                          : "text-white/55 border-white/20"
                       }`}
                     >
                       <span className="opacity-40 text-[10px]">
-                        [{new Date(m.timestamp).toLocaleTimeString("tr-TR")}] {isLilith ? "Lilith" : m.sender === "generic" ? "System" : "User"}:
+                        [{new Date(m.timestamp).toLocaleTimeString("tr-TR")}] {isLilith ? "Lilith" : m.sender === "generic" ? "Varlık" : "User"}:
                       </span>{" "}
                       <span className={isLilith ? "font-serif italic text-[13px] tracking-normal" : ""}>
                         {m.text}
