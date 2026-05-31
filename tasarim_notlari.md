@@ -44,9 +44,36 @@ Konumlanış **yüzeye göre** (DEVIR kararı): **inandırıcılık-kritik** yü
 | Transcript akışı (sentiment-pill'li) | `footer/TranscriptStream` | araç (melez) | okunabilirlik + atmosfer |
 | **Araya-gir girişi** (müdahale) | `ControlBar` | **melez / menteşe** | araç olarak girer; interaktif plausibility burada doğar |
 
+## Kart 1 — Renk-kodlu dualite (altın Lilith / beyaz Varlık)
+
+**NE** — tek renk değil; ~8 kanalda anlamca güdülenmiş asimetri (mevcut koddan):
+
+| Kanal | Lilith | Varlık |
+|---|---|---|
+| Renk / ısı | sıcak altın `#D4AF37`, kahve-siyah zemin | soğuk beyaz-gri `#D0D0D0`/`#fff`, nötr-siyah zemin |
+| Parlaklık | canlı (kenar .40 · glow .10 · ses-dalga .95 · isim tam `#fff`) | kısık (kenar .18 · glow .05 · dalga .38 · isim `…,.20`) |
+| Tipografi | süslü Playfair serif italik replik | sade Inter sans replik |
+| Dil kaydı | şiirsel ("Kraliçe sessizliğe büründü") | makinemsi ("[ boş. bekliyor. ]", çıplak "...") |
+| Konum | glow sol-üst | glow sağ-üst (aynalı) |
+| Kimliğe özel | — | yalnız Varlık'ta `[Bellek: Boş → N iz]` sayacı |
+| Etiket | "SUBJECT A: THE MATRIARCH" (.9) | "SUBJECT B: TABULA RASA" (.30) |
+
+> Not: mevcut kod kimlikleri **t=0'da tam-deklare** ediyor; NİYET/ÖDÜN bunu *ifşa* modeline kaydırıyor (karar aşağıda).
+
+**NEDEN** — çok-kanallı, anlamca güdülenmiş tutarlı asimetri ikisini **ayrı zihinler** olarak bireyleştirir, her birinin doğasını okutur — believability'nin zemini (ayırt edilemeyen ya da formu doğasıyla çelişen karaktere inanılmaz). İnandırıcılık ayrıca, kimlik **dayatıldığında değil, kazanılıp çözüldüğünde** güçlenir (izleyici neyi *çözdüyse* ona inanır). *Kanıt:* believable-agents / *Illusion of Life* (Bates; Thomas & Johnston) — çok-kanallı tutarlı ifade; "göster, söyleme" / kademeli ifşa — anlatı ilkesi **[yerleşik, Lilith'te ölçülmedi]**. Renk *anlamları* (altın=iktidar / solgun=şekillenmemiş) = **kültürel kod, ampirik değil**. Asimetri/ifşa believability'i yükseltiyor mu → **ölçülmedi—ölçülecek**.
+
+**NİYET** *(karar: deklarasyon değil **ifşa**)* — başta izleyici **ikisini de tanımıyor**; kimlikler **çözülerek** belirir, etiketle dayatılmaz. Lilith **kendini bilir** (içsel olarak formlu) ama **duruma göre ortaya çıkar** → izleyici onu *decode* eder; altın/matriark kimliği konuştukça **kazanılmalı**, ilk karede damgalanmamalı. Varlık ise gerçekten **birikir** (ontolojik oluş; `[Bellek]`). Ortak okuma: *inandırıcılık, kazanılmış keşiften doğar* → **çapaya bağlı.**
+
+**ÖDÜN** —
+1. **Erişilebilirlik:** kimlik hue + düşük-opaklık kontrastına yaslı; renk körlüğünde altın/gri ayrımı düşer, Varlık'ın tasarım-gereği sönüklüğü WCAG'i geçmez. Bilinçli takas (inandırıcılık-kritik/eser-önde) ama gerçek maliyet.
+2. **Deklarasyon → ifşa (seçildi):** mevcut kod hiyerarşiyi *baştan* basıyor (Lilith t=0'da tam-parlak + "THE MATRIARCH"; "SUBJECT A/B" etiketleri). Karar: ikisi de daha **örtük** başlasın; Lilith'in kimliği konuştukça *ifşa olsun* (izleyici çözer), Varlık `[Bellek]` doldukça ısınsın. **Uygulama sıradaki oturuma; bu kart kararı kaydeder.**
+3. **İfşanın kendi ödünü:** çok örtük başlamak, NEDEN'deki anlık **bireyleşmeyi** zayıflatabilir. Çözüm ayrımı: **bireyleşme** (ayırt-edilebilirlik — t=0'da korunur) ≠ **karakterizasyon/hiyerarşi** (kim baskın / kim ne — zamanla ifşa). Onları *ayırt et*, ama *yargılama*.
+
+> Çapraz-kesit aday ilke: **deklarasyon değil ifşa** — diğer kartlara ve teze taşınacak.
+
 ## Kartlar — sıradaki adımlar *(her biri birlikte yazılacak; NİYET satırı çapaya bağlanacak)*
 
-1. Renk-kodlu dualite — altın Lilith (`#D4AF37`) / beyaz Varlık (`#D0D0D0`)
+1. ✅ **Renk-kodlu dualite** — yazıldı (yukarı bkz. *Kart 1*). Karar: *deklarasyon değil ifşa*.
 2. Sentiment görselleştirme — mesaj-pill'leri + global ambient glow
 3. Ses-ritim — karaktere özel prozodi + Edge sesleri
 4. "Ciddiyet" kararları — kalite-kapısı / "eser önde" tonu
