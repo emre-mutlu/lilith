@@ -9,7 +9,7 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
 | Build | Vite 5 (middleware mode in dev) |
 | Backend | Express + TypeScript (`server/index.ts`) |
-| AI | `@google/genai` — Gemini 2.5 Flash (text) + Preview TTS (audio) |
+| AI | `@google/genai` — Gemini 3.1 Flash-Lite (text, via `GEMINI_MODEL`) · `msedge-tts` — Edge TTS (audio) |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
 ## First-time setup
@@ -24,7 +24,8 @@ npm run dev                # http://localhost:3000
 
 | Variable | Required | Notes |
 |----------|----------|-------|
-| `GEMINI_API_KEY` | Yes | Gemini text + TTS calls |
+| `GEMINI_API_KEY` | Yes | Gemini text generation |
+| `GEMINI_MODEL` | No | Text model. Default `gemini-3.1-flash-lite`; alt `gemini-2.5-flash` |
 | `PORT` | No | Default 3000 |
 
 ## Project structure
@@ -53,8 +54,8 @@ src/
 
 **POST /api/generate**
 ```json
-{ "speaker": "lilith" | "generic", "history": [...], "skipTts": false }
-→ { "text": "...", "audio": "<base64 PCM>", "mimeType": "audio/pcm" }
+{ "speaker": "lilith" | "generic", "history": [...], "ttsEngine": "edge" | "browser" }
+→ { "text": "...", "audio": "<base64 MP3>", "mimeType": "audio/mpeg" }
 ```
 
 **POST /api/tts** — standalone TTS endpoint, same response shape.
@@ -63,12 +64,12 @@ src/
 
 | Character | System prompt role | TTS voice | Color |
 |-----------|-------------------|-----------|-------|
-| Kraliçe Lilith | Zarif, manipülatif kraliçe | Kore | #D4AF37 (gold) |
-| Varlık | Tabula rasa, şekillenmemiş | Charon | #D0D0D0 (white) |
+| Kraliçe Lilith | Zarif, manipülatif kraliçe | `tr-TR-EmelNeural` | #D4AF37 (gold) |
+| Varlık | Tabula rasa, şekillenmemiş | `tr-TR-AhmetNeural` | #D0D0D0 (white) |
 
 ## Audio playback
 
-- **Gemini-TTS mode**: server returns base64 PCM → client decodes via Web Audio API at 24 kHz. Raw 16-bit LE PCM or WAV container both handled.
+- **Edge-TTS mode**: server (`msedge-tts`) returns base64 MP3 (`audio/mpeg`) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
 - Voice engine toggled in footer "Simulation Parameters" panel.
 

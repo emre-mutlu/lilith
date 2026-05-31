@@ -10,6 +10,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
 const PORT = parseInt(process.env.PORT ?? '3000', 10)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? ''
+// Metin modeli — GEMINI_MODEL ile değiştirilebilir (kulakla A/B testi için).
+// Varsayılan: gemini-3.1-flash-lite — hızlı (~1.5s), ücretsiz kota 30-60dk döngüyü
+// sürdürür (test: 18/18 temiz), ciddi/manipülatif Türkçe tını. GA alternatif: gemini-2.5-flash.
+// (Not: gemini-3-flash-preview free kotası dar — döngüde 429'a çarpar. gemini-2.0-flash kotası tükendi.)
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite'
 
 const LABELS: Record<string, string> = {
   lilith: 'Kraliçe Lilith',
@@ -102,7 +107,7 @@ async function generateText(speaker: 'lilith' | 'generic', history: Message[]): 
   const prompt = `Konuşma geçmişi:\n${histText}\n\nSıradaki kısa yanıtını yaz. Sadece diyalog metni, başka hiçbir şey.`
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: GEMINI_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       temperature: 0.85,
