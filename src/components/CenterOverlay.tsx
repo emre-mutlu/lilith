@@ -1,5 +1,4 @@
 interface Props {
-  currentWord: string
   currentWordIdx: number
   activeSpeaker: 'lilith' | 'generic' | null
   currentText: string

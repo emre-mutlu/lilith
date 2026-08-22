@@ -10,11 +10,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
 const PORT = parseInt(process.env.PORT ?? '3000', 10)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? ''
-// Metin modeli — GEMINI_MODEL ile değiştirilebilir (kulakla A/B testi için).
-// Varsayılan: gemini-3.1-flash-lite — hızlı (~1.5s), ücretsiz kota 30-60dk döngüyü
-// sürdürür (test: 18/18 temiz), ciddi/manipülatif Türkçe tını. GA alternatif: gemini-2.5-flash.
-// (Not: gemini-3-flash-preview free kotası dar — döngüde 429'a çarpar. gemini-2.0-flash kotası tükendi.)
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite'
+// Metin modeli — GEMINI_MODEL ile değiştirilebilir. PIN stratejisi: alias
+// (flash-lite-latest) kullanılmaz; nesne atlamaları davranışı sessiz değiştirir.
+// Varsayılan: gemini-3.5-flash-lite (ölçüm 2026-08-22: 735ms, tını kulakla onaylı).
+// Eski: gemini-3.1-flash-lite (844ms). 2.5-flash çok yavaş (5145ms) — aday değil.
+// 3.7-flash yeni çıktığından yük altında (503) — izleniyor.
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite'
+// Geçmiş penceresi — kayan pencere boyutu (mesaj adedi). Faz 2'de 12/20/30 A/B
+// ölçümü yapılacak; varsayılan 20 (eski sabit 12 prototipten kalma, hiç ölçülmemişti).
+const HISTORY_WINDOW = parseInt(process.env.GEMINI_HISTORY ?? '20', 10)
 
 const LABELS: Record<string, string> = {
   lilith: 'Kraliçe Lilith',
@@ -103,7 +107,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 35000):
 
 async function generateText(speaker: 'lilith' | 'generic', history: Message[]): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
-  const histText = buildHistoryText(history.slice(-12))
+  const histText = buildHistoryText(history.slice(-HISTORY_WINDOW))
   const prompt = `Konuşma geçmişi:\n${histText}\n\nSıradaki kısa yanıtını yaz. Sadece diyalog metni, başka hiçbir şey.`
 
   const response = await ai.models.generateContent({

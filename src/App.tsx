@@ -8,8 +8,6 @@ import CenterOverlay from './components/CenterOverlay'
 import ControlBar from './components/ControlBar'
 import TranscriptStream from './components/footer/TranscriptStream'
 
-const CONTEXT_WINDOW = 12
-
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function nowStamp(): string {
@@ -330,7 +328,8 @@ export default function App() {
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ speaker, history, ttsEngine: voiceEngineRef.current }),
+      // Mute'ta ses üretimini atla — sunucu TTS çağrısı yapmasın (boşuna kota harcamasın)
+      body: JSON.stringify({ speaker, history, ttsEngine: mutedRef.current ? 'browser' : voiceEngineRef.current }),
     })
     const data = await res.json()
     if (!res.ok || data.error) throw new Error(data.error ?? 'API hatası')
@@ -450,7 +449,9 @@ export default function App() {
 
     const msg: Message = { id: makeId(), sender: 'user', text, timestamp: nowStamp() }
     const prevMessages = messagesRef.current
-    setMessages([...prevMessages, msg])
+    // Ref'i senkron güncelle — runTurn/prefetch doğru geçmişi okusun (runTurn'deki desenle aynı)
+    messagesRef.current = [...prevMessages, msg]
+    setMessages(messagesRef.current)
 
     let lastSpeaker: 'lilith' | 'generic' | null = null
     for (let i = prevMessages.length - 1; i >= 0; i--) {
@@ -567,7 +568,6 @@ export default function App() {
         )}
         {showKaraoke && (
           <CenterOverlay
-            currentWord={currentWord}
             currentWordIdx={currentWordIdx}
             activeSpeaker={activeSpeaker}
             currentText={activeSpeaker === 'lilith' ? (lastLilith?.text ?? '') : (lastVarlik?.text ?? '')}

@@ -9,7 +9,7 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
 | Build | Vite 5 (middleware mode in dev) |
 | Backend | Express + TypeScript (`server/index.ts`) |
-| AI | `@google/genai` — Gemini 3.1 Flash-Lite (text, via `GEMINI_MODEL`) · `msedge-tts` — Edge TTS (audio) |
+| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, via `GEMINI_MODEL`, **pinned** — alias kullanma) · `msedge-tts` — Edge TTS (audio) |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
 ## First-time setup
@@ -25,7 +25,8 @@ npm run dev                # http://localhost:3000
 | Variable | Required | Notes |
 |----------|----------|-------|
 | `GEMINI_API_KEY` | Yes | Gemini text generation |
-| `GEMINI_MODEL` | No | Text model. Default `gemini-3.1-flash-lite`; alt `gemini-2.5-flash` |
+| `GEMINI_MODEL` | No | Text model. Default `gemini-3.5-flash-lite` (pinned). Not: 2.5-flash çok yavaş (5.1s); 3.7-flash yük altında (503) |
+| `GEMINI_HISTORY` | No | Geçmiş penceresi, mesaj adedi. Default 20 |
 | `PORT` | No | Default 3000 |
 
 ## Project structure
@@ -71,7 +72,7 @@ src/
 
 - **Edge-TTS mode**: server (`msedge-tts`) returns base64 MP3 (`audio/mpeg`) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- Voice engine toggled in footer "Simulation Parameters" panel.
+- Voice engine is Edge-only right now (server-side); the footer "Simulation Parameters" panel with the engine selector exists but is **not mounted** — selector returns in Faz 1.
 
 ## Sentiment system
 

@@ -98,7 +98,9 @@ function MessageRow({ msg, isLast, currentWord }: { msg: Message; isLast: boolea
     textNode = (
       <span style={textStyle}>
         {words.map((w, i) => {
-          const isCurr = w.trim() && w.trim() === currentWord
+          // currentWord App tarafında noktalama-arındırılmış gelir; aynı arındırmayı burada da yap
+          const clean = w.trim().replace(/[.,!?;:"'`…—–]/g, '')
+          const isCurr = clean && clean === currentWord
           return (
             <span key={i} style={{
               background: isCurr ? `rgba(${highlightRgb}, 0.18)` : 'transparent',
