@@ -27,6 +27,9 @@ npm run dev                # http://localhost:3000
 | `GEMINI_API_KEY` | Yes | Gemini text generation |
 | `GEMINI_MODEL` | No | Text model. Default `gemini-3.5-flash-lite` (pinned). Not: 2.5-flash çok yavaş (5.1s); 3.7-flash yük altında (503) |
 | `GEMINI_HISTORY` | No | Geçmiş penceresi, mesaj adedi. Default 20 |
+| `AZURE_SPEECH_KEY` | No | Azure Speech F0 (500K karakter/ay). Key yoksa Azure katmanı atlanır |
+| `AZURE_SPEECH_REGION` | No | Default `westeurope`. Key'in bölgesiyle eşleşmeli |
+| `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew |
 | `PORT` | No | Default 3000 |
 
 ## Project structure

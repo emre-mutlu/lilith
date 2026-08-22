@@ -203,6 +203,61 @@ async function generateEdgeTts(text: string, speaker: 'lilith' | 'generic'): Pro
   }
 }
 
+// ── Azure Speech TTS (F0 bedava katman) ──────────────────────────────────────
+// 500K neural karakter/ay · 20 istek/dk · multilingual sesler tr-TR konuşur.
+// Key yoksa bu katman sessizce atlanır (merdiven Edge'e düşer).
+const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY ?? ''
+const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION ?? 'westeurope'
+// Sesler env ile değiştirilebilir — dinleme/karar sonrası koda dokunmadan oynanabilir.
+const AZURE_VOICES: Record<TtsSpeaker, { voice: string; style?: string }> = {
+  lilith:  { voice: process.env.AZURE_VOICE_LILITH  ?? 'en-US-AvaMultilingualNeural' },
+  generic: { voice: process.env.AZURE_VOICE_GENERIC ?? 'en-US-AndrewMultilingualNeural' },
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c] as string))
+}
+
+function buildSsml(text: string, voiceName: string, style?: string): string {
+  const inner = style
+    ? `<mstts:express-as style="${style}">${escapeXml(text)}</mstts:express-as>`
+    : escapeXml(text)
+  return (
+    `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" ` +
+    `xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="tr-TR">` +
+    `<voice name="${voiceName}"><lang xml:lang="tr-TR">${inner}</lang></voice></speak>`
+  )
+}
+
+async function generateAzureTts(text: string, speaker: TtsSpeaker, override?: { voice?: string; style?: string }): Promise<{ audio: string; mimeType: string } | null> {
+  if (!AZURE_SPEECH_KEY) return null
+  try {
+    const cfg = { ...AZURE_VOICES[speaker], ...override }
+    const res = await fetch(`https://${AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': AZURE_SPEECH_KEY,
+        'Ocp-Apim-Subscription-Region': AZURE_SPEECH_REGION,
+        'Content-Type': 'application/ssml+xml',
+        // 24kHz MP3 — client decoder'ın MP3 yolu ile uyumlu
+        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+        'User-Agent': 'lilith-duality',
+      },
+      body: buildSsml(text, cfg.voice, cfg.style),
+    })
+    if (!res.ok) {
+      console.error(`Azure TTS error: ${res.status} ${await res.text().catch(() => '')}`.slice(0, 200))
+      return null
+    }
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length === 0) return null
+    return { audio: buf.toString('base64'), mimeType: 'audio/mpeg' }
+  } catch (err) {
+    console.error('Azure TTS error:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
 async function main() {
   const app = express()
   app.use(express.json())
@@ -212,7 +267,7 @@ async function main() {
     const { speaker, history = [], ttsEngine = 'edge' } = req.body as {
       speaker: TtsSpeaker
       history: Message[]
-      ttsEngine: 'edge' | 'browser' | 'gemini'
+      ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure'
     }
 
     if (!speaker || !['lilith', 'generic'].includes(speaker)) {
@@ -230,11 +285,15 @@ async function main() {
         return res.json({ text })
       }
 
-      // Merdiven: gemini -> edge -> null (istemci tarayıcı TTS'e düşer)
+      // Merdiven: gemini -> azure -> edge -> null (istemci tarayıcı TTS'e düşer)
       let ttsResult: { audio: string; mimeType: string } | null = null
       if (ttsEngine === 'gemini') {
         ttsResult = await generateGeminiTts(text, speaker)
-        if (!ttsResult) console.warn('Gemini TTS düştü — Edge fallback')
+        if (!ttsResult) console.warn('Gemini TTS düştü — Azure/Edge fallback')
+      }
+      if (!ttsResult && (ttsEngine === 'azure' || ttsEngine === 'gemini')) {
+        ttsResult = await generateAzureTts(text, speaker)
+        if (!ttsResult && ttsEngine === 'azure') console.warn('Azure TTS düştü — Edge fallback')
       }
       if (!ttsResult) ttsResult = await generateEdgeTts(text, speaker)
       return res.json({
@@ -253,7 +312,7 @@ async function main() {
     const { text, speaker, engine = 'edge', voice, style } = req.body as {
       text: string
       speaker: TtsSpeaker
-      engine?: 'edge' | 'gemini'
+      engine?: 'edge' | 'gemini' | 'azure'
       voice?: string
       style?: string
     }
@@ -264,7 +323,9 @@ async function main() {
     try {
       const result = engine === 'gemini'
         ? await generateGeminiTts(text, speaker, { voice, style })
-        : await generateEdgeTts(text, speaker)
+        : engine === 'azure'
+          ? await generateAzureTts(text, speaker, { voice, style })
+          : await generateEdgeTts(text, speaker)
       if (!result) return res.status(500).json({ error: 'TTS üretilemedi.' })
       return res.json(result)
     } catch (err: unknown) {
