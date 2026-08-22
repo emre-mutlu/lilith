@@ -155,6 +155,8 @@ export default function App() {
   const wordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  // Araya-gin sonrası ilk tur Edge ile anında seslensin (Gemini TTS ~7s bekletmesin)
+  const forceEdgeOnceRef = useRef(false)
 
   // Load browser voices
   useEffect(() => {
@@ -325,11 +327,13 @@ export default function App() {
 
   const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<{ text: string; audio?: string | null; mimeType?: string | null }> => {
     const history = messagesRef.current
+    // Motor seçimi: mute -> ses üretme · araya-gin ilk turu -> Edge (anında ses) · aksi halde seçili motor
+    const engine = mutedRef.current ? 'browser' : forceEdgeOnceRef.current ? 'edge' : voiceEngineRef.current
+    forceEdgeOnceRef.current = false
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Mute'ta ses üretimini atla — sunucu TTS çağrısı yapmasın (boşuna kota harcamasın)
-      body: JSON.stringify({ speaker, history, ttsEngine: mutedRef.current ? 'browser' : voiceEngineRef.current }),
+      body: JSON.stringify({ speaker, history, ttsEngine: engine }),
     })
     const data = await res.json()
     if (!res.ok || data.error) throw new Error(data.error ?? 'API hatası')
@@ -462,6 +466,7 @@ export default function App() {
     }
     const next: 'lilith' | 'generic' = lastSpeaker === 'lilith' ? 'generic' : 'lilith'
 
+    forceEdgeOnceRef.current = true
     setSessionState('running')
     const token = ++cancelTokenRef.current
     setTimeout(() => runTurnRef.current?.(next, token), 100)
