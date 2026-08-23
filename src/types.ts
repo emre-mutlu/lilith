@@ -47,5 +47,9 @@ export interface GenerateResponse {
   intensity?: 'low' | 'mid' | 'high'
   audio?: string | null
   mimeType?: string | null
+  /** Sesfi gerçekten hangi katman verdi: local/azure/edge/gemini/browser/none */
+  engine?: 'local' | 'azure' | 'edge' | 'gemini' | 'browser' | 'none'
+  /** Toplam tur süresi (metin+ses), ms */
+  latencyMs?: number
   error?: string
 }

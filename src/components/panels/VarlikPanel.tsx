@@ -31,21 +31,27 @@ export default function VarlikPanel({ active, state, lastMessage, messages }: Pr
     : avgScore >= 1.5 ? 'Aktif'
     : 'Düşük'
 
+  // İfşa: Varlık konuşma belleği doldukça beliren kimlik (pencere ~20 tur)
+  const warmth = Math.min(1, messages.length / 20)
+  const titleAlpha = 0.18 + 0.62 * warmth
+  const idleBorder = 0.06 + 0.12 * warmth
+
   return (
     <div style={{
       position: 'relative',
       background: 'rgba(14,14,16,0.35)',
-      border: `1px solid rgba(255,255,255,${active ? 0.18 : 0.08})`,
+      border: `1px solid rgba(255,255,255,${active ? 0.30 : idleBorder})`,
       borderRadius: 6,
       padding: '28px 30px 0',
       overflow: 'hidden',
       minHeight: 360,
       display: 'flex', flexDirection: 'column',
       transition: 'border-color 1s ease, background 1s ease',
-      boxShadow: active ? 'inset 0 0 60px rgba(208,208,208,0.04)' : 'none',
+      boxShadow: `inset 0 0 ${Math.round(60 * warmth)}px rgba(208,208,208,${0.06 * warmth + (active ? 0.03 : 0)})`,
     }}>
       <div style={{ position: 'absolute', top: -20, right: -20, width: 140, height: 140,
-        background: '#fff', filter: 'blur(70px)', opacity: 0.05, pointerEvents: 'none' }} />
+        background: '#fff', filter: 'blur(70px)', opacity: 0.02 + 0.08 * warmth, pointerEvents: 'none',
+        transition: 'opacity 1s ease' }} />
 
       <div style={{ position: 'relative', zIndex: 1, flex: 1 }}>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
@@ -54,13 +60,15 @@ export default function VarlikPanel({ active, state, lastMessage, messages }: Pr
         </div>
 
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 68,
-          lineHeight: 1, margin: '10px 0 8px', color: 'rgba(255,255,255,0.20)', fontWeight: 500 }}>
+          lineHeight: 1, margin: '10px 0 8px', color: `rgba(255,255,255,${titleAlpha})`, fontWeight: 500,
+          textShadow: `0 0 ${24 * warmth}px rgba(208,208,208,${0.35 * warmth})`,
+          transition: 'color 1.2s ease, text-shadow 1.2s ease' }}>
           Varlık<span style={{ color: 'rgba(255,255,255,0.30)' }}>.</span>
         </h2>
 
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
           color: 'rgba(255,255,255,0.18)', letterSpacing: '0.05em', marginBottom: 8 }}>
-          [Bellek: {varlikMessages.length === 0 ? 'Boş' : `${varlikMessages.length} iz`}]
+          [Bellek: {varlikMessages.length === 0 ? 'Boş' : `${varlikMessages.length} iz · %${Math.round(warmth * 100)}`}]
         </div>
 
         <div style={{ marginTop: 20, minHeight: 110 }}>

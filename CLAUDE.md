@@ -31,7 +31,7 @@ npm run dev                # http://localhost:3000
 | `AZURE_SPEECH_REGION` | No | Default `westeurope`. Key'in bölgesiyle eşleşmeli |
 | `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew |
 | `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) otomatik başlar. Ayarsızsa katman atlanır |
-| `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti. Default 1.2 (Faz 2'de beat-intensity'ye bağlanacak) |
+| `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti default'u. Default 1.2 — beat intensity varsa override edilir (low 0.8 / mid 1.2 / high 1.7) |
 | `LOCAL_TTS_DRAMATIZE` | No | TTS metnine dramatik `…` duraksamaları (transcript'e dokunmaz). Default 1 |
 | `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler. Default `lilith` (Varlık referansı henüz tasarlanmadı) |
 | `PORT` | No | Default 3000 |
@@ -40,10 +40,14 @@ npm run dev                # http://localhost:3000
 
 ```
 server/
-  index.ts          Express server + Gemini API routes
+  index.ts          Express server + Gemini API routes (/api/director, /api/generate, /api/tts)
+  director.ts       Senaryo sistemi: 24 eğilim + yay/tür/tempo eksenleri, prelüd şeması + doğrulama
+  ttsText.ts        dramatizeForTts (… duraksamaları) + intensityToExaggeration kalibrasyonu
+  chatterbox_service.py  Yerel TTS servisi (port 8777, resident — spawn yolu güvenilmez)
+  faz2.test.ts      vitest: 8 test (prelüd doğrulama, dramatize, kalibrasyon, senaryo bloğu)
 src/
-  App.tsx           Conversation loop, audio playback, all state
-  types.ts          Shared TypeScript types
+  App.tsx           Conversation loop, audio playback, senaryo akışı, telemetri state
+  types.ts          Shared TypeScript types (Message.mood/intensity, ScenarioPrelude)
   lib/
     sentiment.ts    Per-message scoring + global sentiment (no API)
   components/
@@ -51,22 +55,27 @@ src/
     CenterOverlay.tsx  Active-word card (desktop only)
     ControlBar.tsx  Start/pause/reset, mute, intervention input
     panels/
-      LilithPanel.tsx   Left character panel (gold)
-      VarlikPanel.tsx   Right character panel (white/dim)
+      LilithPanel.tsx   Left panel — ifşa: konuştukça altınlaşır (reveal = tur/8)
+      VarlikPanel.tsx   Right panel — ifşa: bellek (~20 tur) doldukça beliri
     footer/
-      SimParameters.tsx  Stats + voice engine selector + sliders
+      SimParameters.tsx  GERÇEK telemetri (latencyMs/engine) + motor seçici + tarayıcı-TTS trimleri
       TranscriptStream.tsx  Scrollable message log with sentiment pills
 ```
 
 ## API routes
 
+**POST /api/director** → `{ sessionId, scenario }` — gizli prelüd (structured output). İstemci saklar, her /api/generate'e ekler; UI'da gösterilmez.
+
 **POST /api/generate**
 ```json
-{ "speaker": "lilith" | "generic", "history": [...], "ttsEngine": "edge" | "browser" }
-→ { "text": "...", "audio": "<base64 MP3>", "mimeType": "audio/mpeg" }
+{ "speaker": "lilith" | "generic", "history": [...], "ttsEngine": "local"|"azure"|"edge"|"gemini"|"browser",
+  "scenario"?, "sessionId"? }
+→ { "text", "mood", "intensity": "low"|"mid"|"high", "audio"?, "mimeType"?,
+    "engine": "local"|"azure"|"edge"|"gemini"|"browser"|"none", "latencyMs" }
 ```
+Beat şeması: her replik {text, mood, intensity} — intensity Chatterbox abartısını sürer. High-intensity anlar pin-belleğe (≤6) işlenir. Her tur `sessions/<sessionId>.jsonl`'e loglanır.
 
-**POST /api/tts** — standalone TTS endpoint, same response shape.
+**POST /api/tts** — standalone TTS endpoint (engine parametreli).
 
 ## Characters
 
@@ -79,7 +88,7 @@ src/
 
 - **Edge-TTS mode**: server (`msedge-tts`) returns base64 MP3 (`audio/mpeg`) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- **Voice engine default `local`** (Chatterbox, M4 Pro'da ~1.2× gerçek-zamanlı) — merdiven otomatik düşer: local → azure → edge → tarayıcı. Footer "Simulation Parameters" paneli hâlâ mount edilmemiş (seçici Faz 3'te).
+- **Voice engine default `local`** (Chatterbox, M4 Pro'da ~1.2× gerçek-zamanlı) — merdiven otomatik düşer: local → azure → edge → tarayıcı. Footer "Simulation Parameters" paneli GERÇEK telemetriyle mount edildi (latencyMs/engine sahte değil).
 - **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
 
 ## Sentiment system
@@ -98,5 +107,13 @@ Global sentiment drives the page's ambient glow color (box-shadow + radial gradi
 npm run dev       # Express + Vite dev server (hot reload)
 npm run build     # Vite production build → dist/client/
 npm run start     # Production Express server (serves dist/client/)
+npm test          # vitest run (8 test)
 npm run typecheck # tsc --noEmit
 ```
+
+## Senaryo sistemi (Faz 2, kilitli spec)
+
+- Her Başlat/Sıfırla'da `/api/director` yeni gizli prelüd üretir (istemcide yaşar, UI'da asla gösterilmez).
+- Prelüd: eğilim(24) + gizli + yay(kishōtenketsu/jo-ha-kyū/…) + gerilim özü + doku + tempo + duygu rengi + Varlık eğrisi.
+- Organik yaylar: zaman çizelgesi YOK — dönüm noktası zamanlaması modelin yargısına göre; tutarlılık maddesi prompt'ta.
+- Rol-dürüst contents: karakter kendi repliklerini `model` rolünde görür. Pin-bellek: high-intensity alıntılar ≤6, pencere dışından beslenir.

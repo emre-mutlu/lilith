@@ -1,25 +1,70 @@
-# CODING AGENTS: READ THIS FIRST
+# Lilith — Duality
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+Türkçe otonom AI diyalog simülasyonu. İki karakter — **Kraliçe Lilith** (altın, manipülatif, her oturumda gizli bir eğilimle doğar) ve **Varlık** (tabula rasa, konuşma belleğiyle şekillenir) — Gemini ile sonsuz döngüde konuşur. Kullanıcı gerçek zamanlı izler, duraklatabilir, araya girebilir.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+## Hızlı başlangıç
 
-## What you should do — IMPORTANT
+```bash
+cp .env.example .env   # GEMINI_API_KEY ekle
+npm install
+npm run dev            # http://localhost:3000
+```
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+## Mimari
 
-**Read `project/Lilith Duality.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+```
+React 18 + TS + Tailwind v4  ←→  Express + TS (server/)
+        │                            ├─ /api/director → gizli senaryo prelüdü
+        │ Web Audio / SpeechSynthesis├─ /api/generate → beat {text,mood,intensity} + TTS merdiveni
+        └────────────────────────────┴─ /api/tts      → tekil TTS
+                                     └─ Chatterbox servisi (ops., port 8777)
+```
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## Ses merdiveni
 
-## About the design files
+`local → azure → edge → tarayıcı` — seçilen motor düşerse sıradaki katman devralır; yanıtın `engine` alanı sesi kimin verdiğini söyler.
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+| Katman | Not |
+|---|---|
+| **local** | Chatterbox (MPS, ~1.2× gerçek-zamanlı). Referans klip = Lilith'in sabit ses kimliği (`assets/voices/lilith-ref.wav`), abartısı = performans. `CHATTERBOX_PYTHON` ayarlıysa Node servisi kendisi başlatır |
+| **azure** | Azure Speech F0 (500K kar/ay) — key gerekli |
+| **edge** | `msedge-tts`, ücretsiz, tr-TR Emel/Ahmet Neural |
+| **gemini** | Bedava kota 10 istek/gün — özel anlar için parkta |
+| **browser** | SpeechSynthesis, karakter prosodisi + duygu modülasyonu |
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+Beat şemasından gelen `intensity`, Chatterbox abartısını sürer: low→0.8 · mid→1.2 · high→1.7.
 
-## Bundle contents
+## Senaryo sistemi (Faz 2)
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Lilith` project files (HTML prototypes, assets, components)
+Her yeni oturumda `/api/director` gizli bir prelüd üretir: Lilith'in 24 eğilimden biri, sakladığı bir sır, oturum yayı (kishōtenketsu, jo-ha-kyū…), tür dokusu, tempo, duygu rengi ve Varlık'ın gelişim eğrisi. Prelüd UI'da gösterilmez — yalnızca repliklerin dokusuna sızar.
+
+- **Rol-dürüst içerik:** model kendi önceki repliklerini `model` rolünde görür (yönerge kirliliği yok).
+- **Pin-bellek:** yüksek yoğunluklu anlar ≤6 alıntıyla pencere dışından taşınır.
+- **Organik yaylar:** zaman çizelgesi yok; dönüm noktası zamanlamasını modelin yargısı belirler.
+- Her tur `sessions/<id>.jsonl`'e metin olarak loglanır (gitignore'lu).
+
+## Telemetri
+
+Footer "Simulation Parameters" paneli sahte sayı göstermez: son tur / ortalama tur süresi ve sesfi veren katman `/api/generate` yanıtındaki `latencyMs` + `engine` alanlarından gelir. Panel ifşası davranışla çalışır: Lilith konuştukça altınlaşır, Varlık'ın bellek penceresi (~20 tur) doldukça beliri hale gelir.
+
+## Ortam değişkenleri
+
+| Değişken | Zorunlu | Not |
+|---|---|---|
+| `GEMINI_API_KEY` | ✅ | Metin üretimi |
+| `GEMINI_MODEL` | — | Pinned: `gemini-3.5-flash-lite`. Alias kullanma |
+| `GEMINI_HISTORY` | — | Geçmiş penceresi (default 20) |
+| `CHATTERBOX_PYTHON` | — | Chatterbox venv python yolu → port 8777 servisi |
+| `LOCAL_TTS_EXAGGERATION` | — | Default 1.2 (beat intensity override eder) |
+| `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` | — | Ayarsızsa Azure katmanı atlanır |
+| `PORT` | — | Default 3000 |
+
+## Komutlar
+
+```bash
+npm run dev        # Express + Vite (hot reload)
+npm run build      # dist/client/
+npm start          # prod sunucu
+npm test           # vitest (director/dramatize/kalibrasyon)
+npm run typecheck  # tsc --noEmit
+```

@@ -488,31 +488,40 @@ async function main() {
       })
 
       if (ttsEngine === 'browser') {
-        return res.json({ text: beat.text, mood: beat.mood, intensity: beat.intensity })
+        return res.json({ text: beat.text, mood: beat.mood, intensity: beat.intensity, engine: 'browser', latencyMs: Date.now() - t0 })
       }
 
       // Merdiven: gemini -> local -> azure -> edge -> null (istemci tarayıcı TTS'e düşer)
       // Yerel motora beat-intensity kalibrasyonu geçer (0.8 / 1.2 / 1.7)
       let ttsResult: { audio: string; mimeType: string } | null = null
+      let servedBy: 'gemini' | 'local' | 'azure' | 'edge' | 'none' = 'none'
       if (ttsEngine === 'gemini') {
         ttsResult = await generateGeminiTts(beat.text, speaker)
-        if (!ttsResult) console.warn('Gemini TTS düştü — local/azure/edge fallback')
+        if (ttsResult) servedBy = 'gemini'
+        else console.warn('Gemini TTS düştü — local/azure/edge fallback')
       }
       if (!ttsResult && (ttsEngine === 'local' || ttsEngine === 'gemini')) {
         ttsResult = await generateLocalTts(beat.text, speaker, intensityToExaggeration(beat.intensity))
-        if (!ttsResult && ttsEngine === 'local') console.warn('Local TTS düştü — azure/edge fallback')
+        if (ttsResult) servedBy = 'local'
+        else if (ttsEngine === 'local') console.warn('Local TTS düştü — azure/edge fallback')
       }
       if (!ttsResult && (ttsEngine === 'azure' || ttsEngine === 'gemini')) {
         ttsResult = await generateAzureTts(beat.text, speaker)
-        if (!ttsResult && ttsEngine === 'azure') console.warn('Azure TTS düştü — Edge fallback')
+        if (ttsResult) servedBy = 'azure'
+        else if (ttsEngine === 'azure') console.warn('Azure TTS düştü — Edge fallback')
       }
-      if (!ttsResult) ttsResult = await generateEdgeTts(beat.text, speaker)
+      if (!ttsResult) {
+        ttsResult = await generateEdgeTts(beat.text, speaker)
+        if (ttsResult) servedBy = 'edge'
+      }
       return res.json({
         text: beat.text,
         mood: beat.mood,
         intensity: beat.intensity,
         audio: ttsResult?.audio ?? null,
         mimeType: ttsResult?.mimeType ?? null,
+        engine: servedBy,
+        latencyMs: Date.now() - t0,
       })
     } catch (err: unknown) {
       console.error('/api/generate error:', err)

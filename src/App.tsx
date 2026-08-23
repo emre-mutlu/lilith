@@ -7,6 +7,7 @@ import VarlikPanel from './components/panels/VarlikPanel'
 import CenterOverlay from './components/CenterOverlay'
 import ControlBar from './components/ControlBar'
 import TranscriptStream from './components/footer/TranscriptStream'
+import SimParameters, { type Telemetry } from './components/footer/SimParameters'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,18 @@ export default function App() {
   const sessionIdRef = useRef<string | null>(null)
 
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('local')
+
+  // Gerçek telemetri: /api/generate'in döndürdüğü latencyMs + engine'den beslenir
+  const [telemetry, setTelemetry] = useState<Telemetry>({
+    lastLatencyMs: null, avgLatencyMs: null, turns: 0, words: 0, servedBy: null,
+  })
+  const latenciesRef = useRef<number[]>([])
+
+  // Tarayıcı-TTS kullanıcı trimleri (sunucu seslerinde etkisiz)
+  const [browserRate, setBrowserRate] = useState(1)
+  const [browserPitch, setBrowserPitch] = useState(1)
+  const browserRateRef = useRef(browserRate); browserRateRef.current = browserRate
+  const browserPitchRef = useRef(browserPitch); browserPitchRef.current = browserPitch
 
   const [allVoices, setAllVoices] = useState<SpeechSynthesisVoice[]>([])
   const [lilithVoiceId, setLilithVoiceId] = useState('')
@@ -278,8 +291,8 @@ export default function App() {
         if (!window.speechSynthesis) { res(); return }
         try { window.speechSynthesis.cancel() } catch {}
 
-        const effRate = Math.max(0.4, Math.min(1.8, charRate))
-        const effPitch = Math.max(0.4, Math.min(1.6, charPitch))
+        const effRate = Math.max(0.4, Math.min(1.8, charRate * browserRateRef.current))
+        const effPitch = Math.max(0.4, Math.min(1.6, charPitch * browserPitchRef.current))
         const targetId = msg.sender === 'lilith' ? lilithVoiceIdRef.current : varlikVoiceIdRef.current
         const voice = allVoicesRef.current.find(x => x.voiceURI === targetId) ?? null
 
@@ -347,6 +360,17 @@ export default function App() {
     })
     const data = await res.json()
     if (!res.ok || data.error) throw new Error(data.error ?? 'API hatası')
+    // Telemetri kaydı (gerçek sunucu ölçümü)
+    if (typeof data.latencyMs === 'number') {
+      latenciesRef.current.push(data.latencyMs)
+      const lats = latenciesRef.current
+      setTelemetry({
+        lastLatencyMs: data.latencyMs,
+        avgLatencyMs: Math.round(lats.reduce((a, b) => a + b, 0) / lats.length),
+        servedBy: data.engine ?? null,
+        turns: 0, words: 0, // tur/kelime render'da mesajlardan hesaplanır
+      })
+    }
     return data
   }, [])
 
@@ -469,6 +493,8 @@ export default function App() {
     // Yeni senaryo: sıfırlamada prelüd de yenilenir
     sessionIdRef.current = null
     setScenario(null)
+    latenciesRef.current = []
+    setTelemetry({ lastLatencyMs: null, avgLatencyMs: null, turns: 0, words: 0, servedBy: null })
   }
 
   const handleMute = () => {
@@ -653,7 +679,22 @@ export default function App() {
         borderTop: '1px solid rgba(255,255,255,0.08)',
         background: 'rgba(0,0,0,0.35)',
         minHeight: 200,
+        display: 'grid',
+        gridTemplateColumns: '300px 1fr',
       }}>
+        <SimParameters
+          voiceEngine={voiceEngine}
+          setVoiceEngine={setVoiceEngine}
+          rate={browserRate}
+          setRate={setBrowserRate}
+          pitch={browserPitch}
+          setPitch={setBrowserPitch}
+          telemetry={{
+            ...telemetry,
+            turns: messages.filter(m => m.sender !== 'user').length,
+            words: wordCount,
+          }}
+        />
         <TranscriptStream
           messages={messages}
           currentWord={currentWord}

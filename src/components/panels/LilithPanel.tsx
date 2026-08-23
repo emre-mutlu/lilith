@@ -32,11 +32,16 @@ export default function LilithPanel({ active, state, lastMessage, messages }: Pr
     : avgScore >= 1.5 ? 'Aktif'
     : 'Düşük'
 
+  // İfşa: Kraliçe konuştukça altınlaır — deklarasyon değil, davranışla beliren kimlik
+  const reveal = Math.min(1, lilithMessages.length / 8)
+  const titleColor = `rgb(${Math.round(255 - 43 * reveal)}, ${Math.round(255 - 80 * reveal)}, ${Math.round(255 - 200 * reveal)})`
+  const idleBorder = 0.10 + 0.18 * reveal
+
   return (
     <div style={{
       position: 'relative',
       background: 'rgba(20, 16, 8, 0.35)',
-      border: `1px solid rgba(212,175,55,${active ? 0.40 : 0.18})`,
+      border: `1px solid rgba(212,175,55,${active ? 0.40 : idleBorder})`,
       borderRadius: 6,
       padding: '28px 30px 0',
       overflow: 'hidden',
@@ -46,7 +51,8 @@ export default function LilithPanel({ active, state, lastMessage, messages }: Pr
       boxShadow: active ? 'inset 0 0 60px rgba(212,175,55,0.07)' : 'none',
     }}>
       <div style={{ position: 'absolute', top: -20, left: -20, width: 160, height: 160,
-        background: GOLD, filter: 'blur(70px)', opacity: 0.10, pointerEvents: 'none' }} />
+        background: GOLD, filter: 'blur(70px)', opacity: 0.06 + 0.12 * reveal, pointerEvents: 'none',
+        transition: 'opacity 1s ease' }} />
 
       <div style={{ position: 'relative', zIndex: 1, flex: 1 }}>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
@@ -55,7 +61,9 @@ export default function LilithPanel({ active, state, lastMessage, messages }: Pr
         </div>
 
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 68,
-          lineHeight: 1, margin: '10px 0 8px', color: '#fff', fontWeight: 500 }}>
+          lineHeight: 1, margin: '10px 0 8px', color: titleColor, fontWeight: 500,
+          textShadow: `0 0 ${28 * reveal}px rgba(212,175,55,${0.45 * reveal})`,
+          transition: 'color 1.2s ease, text-shadow 1.2s ease' }}>
           Lilith<span style={{ color: GOLD }}>.</span>
         </h2>
 

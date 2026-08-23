@@ -1,5 +1,13 @@
-import { useState, useEffect } from 'react'
 import type { VoiceEngine } from '../../types'
+
+export interface Telemetry {
+  lastLatencyMs: number | null
+  avgLatencyMs: number | null
+  turns: number
+  words: number
+  /** Son turda sesi hangi katman verdi */
+  servedBy: string | null
+}
 
 interface Props {
   voiceEngine: VoiceEngine
@@ -8,22 +16,19 @@ interface Props {
   setRate: (v: number) => void
   pitch: number
   setPitch: (v: number) => void
-  wordCount: number
+  telemetry: Telemetry
 }
 
-export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRate, pitch, setPitch, wordCount }: Props) {
-  const [latency, setLatency] = useState(18)
-  const [syncRate, setSyncRate] = useState(99.87)
+const ENGINE_LABELS: Record<VoiceEngine, string> = {
+  local: 'Chatterbox (yerel)',
+  azure: 'Azure Neural',
+  edge: 'Edge Neural',
+  gemini: 'Gemini TTS',
+  browser: 'Tarayıcı',
+}
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      setLatency(10 + Math.floor(Math.random() * 26))
-      setSyncRate(99.5 + Math.random() * 0.49)
-    }, 1800)
-    return () => clearInterval(t)
-  }, [])
-
-  const isAuto = voiceEngine === 'edge'
+export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRate, pitch, setPitch, telemetry }: Props) {
+  const isServerAudio = voiceEngine !== 'browser'
 
   return (
     <div style={{
@@ -51,22 +56,31 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
             padding: '2px 6px', borderRadius: 2, outline: 'none',
           }}
         >
+          <option value="local" style={{ background: '#0A0A0A' }}>Chatterbox (yerel)</option>
+          <option value="azure" style={{ background: '#0A0A0A' }}>Azure Neural</option>
           <option value="edge" style={{ background: '#0A0A0A' }}>Edge Neural</option>
-          <option value="browser" style={{ background: '#0A0A0A' }}>Sistem</option>
+          <option value="gemini" style={{ background: '#0A0A0A' }}>Gemini TTS</option>
+          <option value="browser" style={{ background: '#0A0A0A' }}>Tarayıcı</option>
         </select>
       </StatRow>
 
-      <StatRow label="Latency">
-        <span style={{ color: 'rgba(255,255,255,0.55)' }}>{latency}ms</span>
+      <StatRow label="Son Tur">
+        <span style={{ color: 'rgba(255,255,255,0.55)' }}>
+          {telemetry.lastLatencyMs != null ? `${(telemetry.lastLatencyMs / 1000).toFixed(1)}s` : '—'}
+        </span>
       </StatRow>
-      <StatRow label="Sync Rate">
-        <span style={{ color: '#D4AF37' }}>{syncRate.toFixed(2)}%</span>
+      <StatRow label="Ort. Tur">
+        <span style={{ color: 'rgba(255,255,255,0.55)' }}>
+          {telemetry.avgLatencyMs != null ? `${(telemetry.avgLatencyMs / 1000).toFixed(1)}s` : '—'}
+        </span>
       </StatRow>
-      <StatRow label="Words">
-        <span style={{ color: 'rgba(255,255,255,0.80)' }}>{wordCount}</span>
+      <StatRow label="Ses Veren">
+        <span style={{ color: telemetry.servedBy === 'local' ? '#10B981' : '#D4AF37' }}>
+          {telemetry.servedBy ? ENGINE_LABELS[telemetry.servedBy as VoiceEngine] ?? telemetry.servedBy : '—'}
+        </span>
       </StatRow>
-      <StatRow label="Environment">
-        <span style={{ color: '#10B981' }}>TRS-9</span>
+      <StatRow label="Turs / Kelime">
+        <span style={{ color: 'rgba(255,255,255,0.80)' }}>{telemetry.turns} · {telemetry.words}</span>
       </StatRow>
 
       <div style={{
@@ -75,16 +89,16 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>
         <SliderRow
-          label={isAuto ? 'AI Hızı: Oto' : 'Hız'}
+          label={isServerAudio ? 'Hız: sunucu sesi' : 'Hız'}
           min={0.5} max={1.8} step={0.05}
           value={rate} onChange={setRate}
-          disabled={isAuto} color="#D4AF37"
+          disabled={isServerAudio} color="#D4AF37"
         />
         <SliderRow
-          label={isAuto ? 'AI Tonu: Oto' : 'Ton'}
+          label={isServerAudio ? 'Ton: sunucu sesi' : 'Ton'}
           min={0.6} max={1.4} step={0.05}
           value={pitch} onChange={setPitch}
-          disabled={isAuto} color="#D0D0D0"
+          disabled={isServerAudio} color="#D0D0D0"
         />
       </div>
     </div>
