@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import type { Message, SessionState, SpeakerState, VoiceEngine } from './types'
+import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude } from './types'
 import { globalSentiment, hexToRgb, scoreMessage } from './lib/sentiment'
 import Header from './components/Header'
 import LilithPanel from './components/panels/LilithPanel'
@@ -129,6 +129,10 @@ export default function App() {
   const [tab, setTab] = useState<'lilith' | 'varlik' | 'dual'>('dual')
   const [showKaraoke, setShowKaraoke] = useState(true)
 
+  // Senaryo sistemi: prelüd istemcide yaşar, her /api/generate'e eklenir
+  const [scenario, setScenario] = useState<ScenarioPrelude | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
+
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('local')
 
   const [allVoices, setAllVoices] = useState<SpeechSynthesisVoice[]>([])
@@ -144,6 +148,8 @@ export default function App() {
   mutedRef.current = muted
   const voiceEngineRef = useRef(voiceEngine)
   voiceEngineRef.current = voiceEngine
+  const scenarioRef = useRef(scenario)
+  scenarioRef.current = scenario
   const lilithVoiceIdRef = useRef(lilithVoiceId)
   lilithVoiceIdRef.current = lilithVoiceId
   const varlikVoiceIdRef = useRef(varlikVoiceId)
@@ -325,7 +331,7 @@ export default function App() {
 
   // ── Generate via backend ──────────────────────────────────────────────────
 
-  const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<{ text: string; audio?: string | null; mimeType?: string | null }> => {
+  const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<{ text: string; mood?: string; intensity?: 'low' | 'mid' | 'high'; audio?: string | null; mimeType?: string | null }> => {
     const history = messagesRef.current
     // Motor seçimi: mute -> ses üretme · araya-gin ilk turu -> Edge (anında ses) · aksi halde seçili motor
     const engine = mutedRef.current ? 'browser' : forceEdgeOnceRef.current ? 'edge' : voiceEngineRef.current
@@ -333,7 +339,11 @@ export default function App() {
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ speaker, history, ttsEngine: engine }),
+      body: JSON.stringify({
+        speaker, history, ttsEngine: engine,
+        scenario: scenarioRef.current ?? undefined,
+        sessionId: sessionIdRef.current ?? undefined,
+      }),
     })
     const data = await res.json()
     if (!res.ok || data.error) throw new Error(data.error ?? 'API hatası')
@@ -342,7 +352,7 @@ export default function App() {
 
   // ── Conversation loop ─────────────────────────────────────────────────────
 
-  type TurnResult = { text: string; audio?: string | null; mimeType?: string | null }
+  type TurnResult = { text: string; mood?: string; intensity?: 'low' | 'mid' | 'high'; audio?: string | null; mimeType?: string | null }
   const runTurnRef = useRef<((speaker: 'lilith' | 'generic', token: number, prefetched?: TurnResult | null) => Promise<void>) | null>(null)
 
   const runTurn = useCallback(async (
@@ -378,7 +388,10 @@ export default function App() {
 
     if (!result.text) { setSpeakerState('idle'); setActiveSpeaker(null); return }
 
-    const msg: Message = { id: makeId(), sender: speaker, text: result.text, timestamp: nowStamp() }
+    const msg: Message = {
+      id: makeId(), sender: speaker, text: result.text, timestamp: nowStamp(),
+      mood: result.mood, intensity: result.intensity,
+    }
     // Update ref immediately so prefetch reads correct history
     messagesRef.current = [...messagesRef.current, msg]
     setMessages(messagesRef.current)
@@ -419,9 +432,29 @@ export default function App() {
     }
     setSessionState('running')
     const token = ++cancelTokenRef.current
-    const last = messagesRef.current[messagesRef.current.length - 1]
-    const next: 'lilith' | 'generic' = !last ? 'lilith' : last.sender === 'lilith' ? 'generic' : 'lilith'
-    setTimeout(() => runTurnRef.current?.(next, token), 60)
+
+    const begin = () => {
+      if (token !== cancelTokenRef.current) return
+      const last = messagesRef.current[messagesRef.current.length - 1]
+      const next: 'lilith' | 'generic' = !last ? 'lilith' : last.sender === 'lilith' ? 'generic' : 'lilith'
+      runTurnRef.current?.(next, token)
+    }
+
+    // Yeni oturum: yönetmen prelüdü üret (sessiz — kullanıcı beklemez, döngü hemen başlar)
+    if (!sessionIdRef.current) {
+      fetch('/api/director', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (d?.scenario) {
+            setScenario(d.scenario as ScenarioPrelude)
+            sessionIdRef.current = d.sessionId ?? null
+          }
+        })
+        .catch(() => {})
+        .finally(begin)
+    } else {
+      begin()
+    }
   }
 
   const handleReset = () => {
@@ -433,6 +466,9 @@ export default function App() {
     setSpeakerState('idle')
     setCurrentWord('')
     setError('')
+    // Yeni senaryo: sıfırlamada prelüd de yenilenir
+    sessionIdRef.current = null
+    setScenario(null)
   }
 
   const handleMute = () => {

@@ -9,6 +9,22 @@ export interface Message {
   sender: Speaker
   text: string
   timestamp: string
+  mood?: string
+  intensity?: 'low' | 'mid' | 'high'
+}
+
+/** Yönetmen prelüdü — her yeni oturumda bir kez üretilir, istemcide yaşar, UI'da gösterilmez. */
+export interface ScenarioPrelude {
+  lilith_egilimi: string
+  lilith_gizlisi: string
+  oturum_yayi: string
+  gerilim_ozu: string
+  tur_doku: string
+  tempo: string
+  duygu_rengi: string
+  varlik_egrisi: string
+  acilis_sahnesi: string
+  varlik_baslangici: string
 }
 
 export interface MessageScore {
@@ -27,6 +43,8 @@ export interface GlobalSentiment {
 
 export interface GenerateResponse {
   text: string
+  mood?: string
+  intensity?: 'low' | 'mid' | 'high'
   audio?: string | null
   mimeType?: string | null
   error?: string

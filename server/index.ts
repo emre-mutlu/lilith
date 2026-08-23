@@ -3,7 +3,15 @@ import express from 'express'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn, type ChildProcess } from 'node:child_process'
+import fs from 'node:fs'
 import { createServer as createViteServer } from 'vite'
+import {
+  directorInstruction, scenarioBlock, lilithScenarioBlock, varlikScenarioBlock,
+  validatePrelude, LILITH_EGILIMLERI, OTURUM_YAYLARI, GERILIM_OZLERI,
+  TUR_DOKU, TEMPO, DUYGU_RENGI, VARLIK_EGRILERI,
+  type ScenarioPrelude,
+} from './director.js'
+import { dramatizeForTts, intensityToExaggeration } from './ttsText.js'
 import { GoogleGenAI } from '@google/genai'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 
@@ -133,6 +141,21 @@ interface Message {
   sender: 'lilith' | 'generic' | 'user'
   text: string
   timestamp: string
+  mood?: string
+  intensity?: 'low' | 'mid' | 'high'
+}
+
+type Intensity = NonNullable<Message['intensity']>
+
+// ── JSONL tur-logu (yalnız metin — ses loglanmaz) ────────────────────────────
+const SESSIONS_DIR = path.join(__dirname, '..', 'sessions')
+fs.mkdirSync(SESSIONS_DIR, { recursive: true })
+
+const SAFE_ID = /^[a-z0-9-]{6,40}$/
+function appendTurnLog(sessionId: string | undefined, entry: Record<string, unknown>): void {
+  if (!sessionId || !SAFE_ID.test(sessionId)) return
+  const line = JSON.stringify({ ts: new Date().toISOString(), ...entry })
+  fs.appendFile(path.join(SESSIONS_DIR, `${sessionId}.jsonl`), line + '\n', () => {})
 }
 
 function buildHistoryText(history: Message[]): string {
@@ -166,23 +189,87 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 35000):
   }
 }
 
-async function generateText(speaker: 'lilith' | 'generic', history: Message[]): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
-  const histText = buildHistoryText(history.slice(-HISTORY_WINDOW))
-  const prompt = `Konuşma geçmişi:\n${histText}\n\nSıradaki kısa yanıtını yaz. Sadece diyalog metni, başka hiçbir şey.`
+interface Beat {
+  text: string
+  mood: string
+  intensity: Intensity
+}
 
-  const response = await ai.models.generateContent({
+const BEAT_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    text: { type: 'STRING', description: 'Saf diyalog metni — parantez içi eylem/açıklama yok.' },
+    mood: { type: 'STRING', description: 'Bu replikteki baskın duygu (1-2 kelime, örn. soğuk merak).' },
+    intensity: { type: 'STRING', enum: ['low', 'mid', 'high'], description: 'Duygusal yoğunluk.' },
+  },
+  required: ['text', 'mood', 'intensity'],
+} as const
+
+/** Rol-dürüst geçmiş: karakterin kendi replikleri model rolünde. */
+function roleContents(speaker: TtsSpeaker, history: Message[]): Array<{ role: string; parts: Array<{ text: string }> }> {
+  const recent = history.slice(-HISTORY_WINDOW)
+  const contents = recent.map(m => ({
+    role: m.sender === speaker ? 'model' : 'user',
+    parts: [{ text: m.text }],
+  }))
+  if (!contents.length || contents[0].role !== 'user') {
+    contents.unshift({ role: 'user', parts: [{ text: '(karşılaşma başlar)' }] })
+  }
+  return contents
+}
+
+/** Pin-bellek: high-intensity dönüm noktaları pencereden bağımsız hatırlanır. */
+function pinMemoryBlock(history: Message[]): string {
+  const pins = history.filter(m => m.intensity === 'high').slice(-6)
+  if (!pins.length) return ''
+  return `\n[ÖNEMLİ ANLAR — oturumun dönüm noktaları, unutma]\n` +
+    pins.map(m => `- ${m.sender === 'lilith' ? 'Lilith' : m.sender === 'generic' ? 'Varlık' : 'Moderatör'}: ${m.text.slice(0, 140)}`).join('\n')
+}
+
+async function generateText(
+  speaker: TtsSpeaker,
+  history: Message[],
+  scenario?: ScenarioPrelude,
+): Promise<Beat> {
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+
+  let systemInstruction = SYSTEM_INSTRUCTIONS[speaker]
+  if (scenario) {
+    systemInstruction += scenarioBlock(scenario) + pinMemoryBlock(history) +
+      (speaker === 'lilith' ? lilithScenarioBlock(scenario) : varlikScenarioBlock(scenario))
+  } else {
+    systemInstruction += pinMemoryBlock(history)
+  }
+
+  const response = await withRetry(() => ai.models.generateContent({
     model: GEMINI_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents: roleContents(speaker, history),
     config: {
       temperature: 0.85,
       topP: 0.95,
-      systemInstruction: SYSTEM_INSTRUCTIONS[speaker],
+      systemInstruction,
+      responseMimeType: 'application/json',
+      responseSchema: BEAT_SCHEMA,
     },
-  })
+  }))
 
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-  return stripPrefix(text)
+  const raw = response.candidates?.[0]?.content?.parts?.map(p => p.text ?? '').join('') ?? ''
+  // Cömert çözümleme: JSON bozuksa ham metni kurtar
+  try {
+    const parsed = JSON.parse(raw) as Partial<Beat>
+    const text = stripPrefix(String(parsed.text ?? ''))
+    if (!text) throw new Error('boş text')
+    return {
+      text,
+      mood: String(parsed.mood ?? ''),
+      intensity: (['low', 'mid', 'high'].includes(String(parsed.intensity))
+        ? parsed.intensity : 'mid') as Intensity,
+    }
+  } catch {
+    const text = stripPrefix(raw)
+    if (!text) throw new Error('Boş yanıt alındı.')
+    return { text, mood: '', intensity: 'mid' }
+  }
 }
 
 async function generateEdgeTts(text: string, speaker: 'lilith' | 'generic'): Promise<{ audio: string; mimeType: string } | null> {
@@ -297,18 +384,9 @@ async function ensureLocalService(): Promise<boolean> {
   return false
 }
 
-// Kazanan reçete: replikte dramatik duraksamalar (transcript'e DEĞİL sadece TTS'e uygulanır)
-function dramatizeForTts(text: string): string {
-  const sentences = text.split(/(?<=[.!?…])\s+/)
-  return sentences.map(s => {
-    const words = s.split(/\s+/)
-    if (words.length < 6) return s
-    return [words[0] + '…', ...words.slice(1, -2), '…' + words.slice(-2).join(' ')].join(' ')
-      .replace('……', '…')
-  }).join(' ')
-}
+// Kazanan reçete dramatizeForTts → server/ttsText.ts'e taşındı (test edilebilirlik)
 
-async function generateLocalTts(text: string, speaker: TtsSpeaker): Promise<{ audio: string; mimeType: string } | null> {
+async function generateLocalTts(text: string, speaker: TtsSpeaker, exaggerationOverride?: number): Promise<{ audio: string; mimeType: string } | null> {
   if (!LOCAL_TTS_SPEAKERS.includes(speaker)) return null
   if (!(await ensureLocalService())) return null
   try {
@@ -316,7 +394,7 @@ async function generateLocalTts(text: string, speaker: TtsSpeaker): Promise<{ au
     const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: ttsText, exaggeration: LOCAL_TTS_EXAGGERATION }),
+      body: JSON.stringify({ text: ttsText, exaggeration: exaggerationOverride ?? LOCAL_TTS_EXAGGERATION }),
       signal: AbortSignal.timeout(60_000),
     })
     if (!r.ok) {
@@ -338,11 +416,58 @@ async function main() {
   app.use(express.json())
 
   // ── API routes ──────────────────────────────────────────────────────────────
+  // Yönetmen prelüdü: her yeni oturumda bir kez çağrılır; prelüd istemcide yaşar.
+  const PRELUDE_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+      lilith_egilimi: { type: 'STRING', enum: [...LILITH_EGILIMLERI] },
+      lilith_gizlisi: { type: 'STRING', description: 'Hiç söylemeyeceği şey: kusur/korku/geçmiş/niyet (tek cümle).' },
+      oturum_yayi: { type: 'STRING', enum: [...OTURUM_YAYLARI] },
+      gerilim_ozu: { type: 'STRING', enum: [...GERILIM_OZLERI] },
+      tur_doku: { type: 'STRING', enum: [...TUR_DOKU] },
+      tempo: { type: 'STRING', enum: [...TEMPO] },
+      duygu_rengi: { type: 'STRING', enum: [...DUYGU_RENGI] },
+      varlik_egrisi: { type: 'STRING', enum: [...VARLIK_EGRILERI] },
+      acilis_sahnesi: { type: 'STRING', description: 'Açılış dokusu — serbest, tek cümle.' },
+      varlik_baslangici: { type: 'STRING', description: "Varlık'ın başlangıç hali — kısa cümle." },
+    },
+    required: ['lilith_egilimi', 'lilith_gizlisi', 'oturum_yayi', 'gerilim_ozu',
+      'tur_doku', 'tempo', 'duygu_rengi', 'varlik_egrisi', 'acilis_sahnesi', 'varlik_baslangici'],
+  }
+
+  app.post('/api/director', async (_req, res) => {
+    if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY yok.' })
+    try {
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+      const response = await withRetry(() => ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: directorInstruction(),
+        config: {
+          temperature: 1.0,
+          topP: 0.95,
+          responseMimeType: 'application/json',
+          responseSchema: PRELUDE_SCHEMA,
+        },
+      }))
+      const raw = response.candidates?.[0]?.content?.parts?.map(p => p.text ?? '').join('') ?? ''
+      const parsed: unknown = JSON.parse(raw)
+      if (!validatePrelude(parsed)) throw new Error('prelüd doğrulamayı geçemedi')
+      const sessionId = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
+      console.log(`[director] yeni oturum ${sessionId}: ${parsed.lilith_egilimi} · ${parsed.tur_doku}`)
+      return res.json({ sessionId, scenario: parsed })
+    } catch (err) {
+      console.error('/api/director error:', err instanceof Error ? err.message : err)
+      return res.status(500).json({ error: 'Prelüd üretilemedi.' })
+    }
+  })
+
   app.post('/api/generate', async (req, res) => {
-    const { speaker, history = [], ttsEngine = 'edge' } = req.body as {
+    const { speaker, history = [], ttsEngine = 'edge', scenario, sessionId } = req.body as {
       speaker: TtsSpeaker
       history: Message[]
       ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure' | 'local'
+      scenario?: ScenarioPrelude
+      sessionId?: string
     }
 
     if (!speaker || !['lilith', 'generic'].includes(speaker)) {
@@ -353,30 +478,39 @@ async function main() {
     }
 
     try {
-      const text = await withRetry(() => generateText(speaker, history))
-      if (!text) return res.status(500).json({ error: 'Boş yanıt alındı.' })
+      const t0 = Date.now()
+      const beat = await withRetry(() => generateText(speaker, history, validatePrelude(scenario) ? scenario : undefined))
+      if (!beat.text) return res.status(500).json({ error: 'Boş yanıt alındı.' })
+
+      appendTurnLog(sessionId, {
+        speaker, text: beat.text, mood: beat.mood, intensity: beat.intensity,
+        latency_ms: Date.now() - t0,
+      })
 
       if (ttsEngine === 'browser') {
-        return res.json({ text })
+        return res.json({ text: beat.text, mood: beat.mood, intensity: beat.intensity })
       }
 
       // Merdiven: gemini -> local -> azure -> edge -> null (istemci tarayıcı TTS'e düşer)
+      // Yerel motora beat-intensity kalibrasyonu geçer (0.8 / 1.2 / 1.7)
       let ttsResult: { audio: string; mimeType: string } | null = null
       if (ttsEngine === 'gemini') {
-        ttsResult = await generateGeminiTts(text, speaker)
+        ttsResult = await generateGeminiTts(beat.text, speaker)
         if (!ttsResult) console.warn('Gemini TTS düştü — local/azure/edge fallback')
       }
       if (!ttsResult && (ttsEngine === 'local' || ttsEngine === 'gemini')) {
-        ttsResult = await generateLocalTts(text, speaker)
+        ttsResult = await generateLocalTts(beat.text, speaker, intensityToExaggeration(beat.intensity))
         if (!ttsResult && ttsEngine === 'local') console.warn('Local TTS düştü — azure/edge fallback')
       }
       if (!ttsResult && (ttsEngine === 'azure' || ttsEngine === 'gemini')) {
-        ttsResult = await generateAzureTts(text, speaker)
+        ttsResult = await generateAzureTts(beat.text, speaker)
         if (!ttsResult && ttsEngine === 'azure') console.warn('Azure TTS düştü — Edge fallback')
       }
-      if (!ttsResult) ttsResult = await generateEdgeTts(text, speaker)
+      if (!ttsResult) ttsResult = await generateEdgeTts(beat.text, speaker)
       return res.json({
-        text,
+        text: beat.text,
+        mood: beat.mood,
+        intensity: beat.intensity,
         audio: ttsResult?.audio ?? null,
         mimeType: ttsResult?.mimeType ?? null,
       })
