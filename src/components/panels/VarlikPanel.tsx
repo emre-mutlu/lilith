@@ -31,8 +31,11 @@ export default function VarlikPanel({ active, state, lastMessage, messages }: Pr
     : avgScore >= 1.5 ? 'Aktif'
     : 'Düşük'
 
-  // İfşa: Varlık konuşma belleği doldukça beliren kimlik (pencere ~20 tur)
-  const warmth = Math.min(1, messages.length / 20)
+  // İfşa: bellek doluluğu + kendi iz skoru (intensity) harmanı — metronom değil,
+  // süreç ve olaylarla yayılan beliriş
+  const W = { high: 2.5, mid: 1, low: 0.4 } as const
+  const izSkoru = varlikMessages.reduce((s, m) => s + W[m.intensity ?? 'mid'], 0) / 12
+  const warmth = Math.min(1, 0.5 * Math.min(1, messages.length / 20) + 0.5 * Math.min(1, izSkoru))
   const titleAlpha = 0.18 + 0.62 * warmth
   const idleBorder = 0.06 + 0.12 * warmth
 

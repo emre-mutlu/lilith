@@ -32,8 +32,10 @@ export default function LilithPanel({ active, state, lastMessage, messages }: Pr
     : avgScore >= 1.5 ? 'Aktif'
     : 'Düşük'
 
-  // İfşa: Kraliçe konuştukça altınlaır — deklarasyon değil, davranışla beliren kimlik
-  const reveal = Math.min(1, lilithMessages.length / 8)
+  // İfşa: tur sayacı DEĞİL — olay ağırlığı. intensity = modelin kendi dramatik yargısı;
+  // yüksek anlar sıçrayış getirir, sıkıcı turlar ifşayı ilerletmez (organik ritim)
+  const W = { high: 2.5, mid: 1, low: 0.4 } as const
+  const reveal = Math.min(1, lilithMessages.reduce((s, m) => s + W[m.intensity ?? 'mid'], 0) / 14)
   const titleColor = `rgb(${Math.round(255 - 43 * reveal)}, ${Math.round(255 - 80 * reveal)}, ${Math.round(255 - 200 * reveal)})`
   const idleBorder = 0.10 + 0.18 * reveal
 

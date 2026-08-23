@@ -55,8 +55,8 @@ src/
     CenterOverlay.tsx  Active-word card (desktop only)
     ControlBar.tsx  Start/pause/reset, mute, intervention input
     panels/
-      LilithPanel.tsx   Left panel — ifşa: konuştukça altınlaşır (reveal = tur/8)
-      VarlikPanel.tsx   Right panel — ifşa: bellek (~20 tur) doldukça beliri
+      LilithPanel.tsx   Left panel — ifşa: intensity-ağırlıklı olay skoru (sayaç değil)
+      VarlikPanel.tsx   Right panel — ifşa: bellek doluluk + iz skoru harmanı
     footer/
       SimParameters.tsx  GERÇEK telemetri (latencyMs/engine) + motor seçici + tarayıcı-TTS trimleri
       TranscriptStream.tsx  Scrollable message log with sentiment pills
