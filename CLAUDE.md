@@ -81,8 +81,10 @@ Beat şeması: her replik {text, mood, intensity} — intensity Chatterbox abart
 
 | Character | System prompt role | TTS voice | Color |
 |-----------|-------------------|-----------|-------|
-| Kraliçe Lilith | Zarif, manipülatif kraliçe | Chatterbox (`lilith-ref.wav`) · Edge fb: `tr-TR-EmelNeural` | #D4AF37 (gold) |
-| Varlık | Tabula rasa, şekillenmemiş | Chatterbox (`varlik-ref.wav`, Iapetus) · Edge fb: `tr-TR-AhmetNeural` | #D0D0D0 (white) |
+| Kraliçe Lilith | Zarif, manipülatif kraliçe | Chatterbox (`lilith-ref.wav`, FR tınısı, cfg 0.3) · Edge fb: `tr-TR-EmelNeural` | #D4AF37 (gold) |
+| Varlık | Tabula rasa, şekillenmemiş | Chatterbox (`varlik-ref.wav`, IT tınısı, cfg 0.1) · Edge fb: `tr-TR-AhmetNeural` | #D0D0D0 (white) |
+
+Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT), `LOCAL_TTS_PROFILE` kişi-bazlı ref+cfg taşır. İlk nesil Achernar/Iapetus Gemini-damıtmaları `/tmp/lilith-eser`'de arşivli — "sentetik damıtma" ile temiz kaynağa geçiş seçeneği açık.
 
 ## Audio playback
 
