@@ -43,7 +43,8 @@ torch.load = _patched_load
 from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # noqa: E402
 
 print(f"[chatterbox] model yükleniyor (device={_ml})...", flush=True)
-MODEL = ChatterboxMultilingualTTS.from_pretrained(device=str(_ml))
+T3_MODEL = os.environ.get("CHATTERBOX_T3", "v2")
+MODEL = ChatterboxMultilingualTTS.from_pretrained(device=str(_ml), t3_model=T3_MODEL)
 LOCK = threading.Lock()
 print("[chatterbox] hazır ✓", flush=True)
 
