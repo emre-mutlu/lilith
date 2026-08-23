@@ -80,10 +80,15 @@ class Handler(BaseHTTPRequestHandler):
             temp = float(req.get("temperature", 0.85))
 
             with LOCK:
-                wav = MODEL.generate(text, language_id="tr", audio_prompt_path=REF_PATH,
-                                     exaggeration=ex, cfg_weight=cfg, temperature=temp)
+                with torch.inference_mode():
+                    wav = MODEL.generate(text, language_id="tr", audio_prompt_path=REF_PATH,
+                                         exaggeration=ex, cfg_weight=cfg, temperature=temp)
                 buf = io.BytesIO()
                 torchaudio.save(buf, wav.cpu(), MODEL.sr, format="wav")
+                # MPS bellek hijyeni: aksi halde art arda isteklerde hız çöker
+                del wav
+                if hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
+                    torch.mps.empty_cache()
             self._send(200, buf.getvalue(), ctype="audio/wav")
         except Exception as e:  # noqa: BLE001
             print(f"[chatterbox] hata: {e}", flush=True)

@@ -395,7 +395,7 @@ async function generateLocalTts(text: string, speaker: TtsSpeaker, exaggerationO
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: ttsText, exaggeration: exaggerationOverride ?? LOCAL_TTS_EXAGGERATION }),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(120_000),
     })
     if (!r.ok) {
       console.error(`Local TTS error: ${r.status}`)
@@ -556,7 +556,7 @@ async function main() {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ text, exaggeration: exaggeration ?? LOCAL_TTS_EXAGGERATION }),
-                  signal: AbortSignal.timeout(60_000),
+                  signal: AbortSignal.timeout(120_000),
                 })
                 if (!r.ok) return null
                 const buf = Buffer.from(await r.arrayBuffer())
