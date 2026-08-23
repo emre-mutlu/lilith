@@ -352,7 +352,9 @@ async function generateAzureTts(text: string, speaker: TtsSpeaker, override?: { 
 const CHATTERBOX_PYTHON = process.env.CHATTERBOX_PYTHON ?? ''
 const LOCAL_TTS_EXAGGERATION = parseFloat(process.env.LOCAL_TTS_EXAGGERATION ?? '1.2')
 const LOCAL_TTS_DRAMATIZE = (process.env.LOCAL_TTS_DRAMATIZE ?? '1') === '1'
-const LOCAL_TTS_SPEAKERS = (process.env.LOCAL_TTS_SPEAKERS ?? 'lilith').split(',')
+const LOCAL_TTS_SPEAKERS = (process.env.LOCAL_TTS_SPEAKERS ?? 'lilith,generic').split(',')
+// Kişi-bazlı referans klip = ses kimliği (assets/voices altında)
+const LOCAL_TTS_REFS: Record<string, string> = { lilith: 'lilith-ref.wav', generic: 'varlik-ref.wav' }
 const LOCAL_TTS_URL = 'http://127.0.0.1:8777'
 
 let localProc: ChildProcess | null = null
@@ -394,7 +396,7 @@ async function generateLocalTts(text: string, speaker: TtsSpeaker, exaggerationO
     const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: ttsText, exaggeration: exaggerationOverride ?? LOCAL_TTS_EXAGGERATION }),
+      body: JSON.stringify({ text: ttsText, exaggeration: exaggerationOverride ?? LOCAL_TTS_EXAGGERATION, ref: LOCAL_TTS_REFS[speaker] }),
       signal: AbortSignal.timeout(120_000),
     })
     if (!r.ok) {
@@ -555,7 +557,7 @@ async function main() {
                 const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ text, exaggeration: exaggeration ?? LOCAL_TTS_EXAGGERATION }),
+                  body: JSON.stringify({ text, exaggeration: exaggeration ?? LOCAL_TTS_EXAGGERATION, ref: LOCAL_TTS_REFS[speaker] }),
                   signal: AbortSignal.timeout(120_000),
                 })
                 if (!r.ok) return null

@@ -33,7 +33,7 @@ npm run dev                # http://localhost:3000
 | `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) otomatik başlar. Ayarsızsa katman atlanır |
 | `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti default'u. Default 1.2 — beat intensity varsa override edilir (low 0.8 / mid 1.2 / high 1.7) |
 | `LOCAL_TTS_DRAMATIZE` | No | TTS metnine dramatik `…` duraksamaları (transcript'e dokunmaz). Default 1 |
-| `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler. Default `lilith` (Varlık referansı henüz tasarlanmadı) |
+| `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler. Default `lilith,varlik` (referanslar: assets/voices/{lilith,varlik}-ref.wav) |
 | `PORT` | No | Default 3000 |
 
 ## Project structure

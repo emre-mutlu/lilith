@@ -79,9 +79,20 @@ class Handler(BaseHTTPRequestHandler):
             cfg = float(req.get("cfg_weight", 0.2))
             temp = float(req.get("temperature", 0.85))
 
+            # Kişi-bazlı referans (yalnızca assets/voices altındaki dosya adları)
+            voices_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "voices"))
+            ref_name = os.path.basename((req.get("ref") or "").strip())
+            if ref_name:
+                cand = os.path.abspath(os.path.join(voices_dir, ref_name))
+                if not cand.startswith(voices_dir + os.sep) or not os.path.isfile(cand):
+                    return self._send(400, b'{"error":"gecersiz ref"}')
+                ref_path = cand
+            else:
+                ref_path = REF_PATH
+
             with LOCK:
                 with torch.inference_mode():
-                    wav = MODEL.generate(text, language_id="tr", audio_prompt_path=REF_PATH,
+                    wav = MODEL.generate(text, language_id="tr", audio_prompt_path=ref_path,
                                          exaggeration=ex, cfg_weight=cfg, temperature=temp)
                 buf = io.BytesIO()
                 torchaudio.save(buf, wav.cpu(), MODEL.sr, format="wav")
