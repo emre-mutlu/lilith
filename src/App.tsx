@@ -347,11 +347,12 @@ export default function App() {
       })
 
       try {
-        if (voiceEngineRef.current === 'edge' && audio) {
+        // Sunucudan ses geldiyse (local/azure/edge/gemini) Web Audio ile çal;
+        // yoksa (browser motoru ya da tüm merdiven düştüyse) tarayıcı TTS'e geç
+        if (audio) {
           try {
             await tryWebAudio()
           } catch {
-            // Fallback to browser TTS
             wordIdx = 0
             await trySpeechSynthesis()
           }
