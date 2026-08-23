@@ -1,7 +1,7 @@
 export type Speaker = 'lilith' | 'generic' | 'user'
 export type SessionState = 'inactive' | 'running' | 'paused'
 export type SpeakerState = 'idle' | 'generating' | 'speaking'
-export type VoiceEngine = 'edge' | 'browser' | 'gemini' | 'azure'
+export type VoiceEngine = 'edge' | 'browser' | 'gemini' | 'azure' | 'local'
 export type SentimentIntensity = 'high' | 'mid' | 'low'
 
 export interface Message {

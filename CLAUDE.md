@@ -9,7 +9,7 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
 | Build | Vite 5 (middleware mode in dev) |
 | Backend | Express + TypeScript (`server/index.ts`) |
-| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, via `GEMINI_MODEL`, **pinned** — alias kullanma) · `msedge-tts` — Edge TTS (audio) |
+| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS merdiveni: **Chatterbox yerel** (`CHATTERBOX_PYTHON` ile) → Azure F0 (key bekliyor) → Edge → tarayıcı · Gemini TTS parkta (bedava kota 10 istek/gün) |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
 ## First-time setup
@@ -30,6 +30,10 @@ npm run dev                # http://localhost:3000
 | `AZURE_SPEECH_KEY` | No | Azure Speech F0 (500K karakter/ay). Key yoksa Azure katmanı atlanır |
 | `AZURE_SPEECH_REGION` | No | Default `westeurope`. Key'in bölgesiyle eşleşmeli |
 | `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew |
+| `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) otomatik başlar. Ayarsızsa katman atlanır |
+| `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti. Default 1.2 (Faz 2'de beat-intensity'ye bağlanacak) |
+| `LOCAL_TTS_DRAMATIZE` | No | TTS metnine dramatik `…` duraksamaları (transcript'e dokunmaz). Default 1 |
+| `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler. Default `lilith` (Varlık referansı henüz tasarlanmadı) |
 | `PORT` | No | Default 3000 |
 
 ## Project structure
@@ -75,7 +79,8 @@ src/
 
 - **Edge-TTS mode**: server (`msedge-tts`) returns base64 MP3 (`audio/mpeg`) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- Voice engine is Edge-only right now (server-side); the footer "Simulation Parameters" panel with the engine selector exists but is **not mounted** — selector returns in Faz 1.
+- **Voice engine default `local`** (Chatterbox, M4 Pro'da ~1.2× gerçek-zamanlı) — merdiven otomatik düşer: local → azure → edge → tarayıcı. Footer "Simulation Parameters" paneli hâlâ mount edilmemiş (seçici Faz 3'te).
+- **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
 
 ## Sentiment system
 

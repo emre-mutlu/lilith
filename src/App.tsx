@@ -129,7 +129,7 @@ export default function App() {
   const [tab, setTab] = useState<'lilith' | 'varlik' | 'dual'>('dual')
   const [showKaraoke, setShowKaraoke] = useState(true)
 
-  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('edge')
+  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('local')
 
   const [allVoices, setAllVoices] = useState<SpeechSynthesisVoice[]>([])
   const [lilithVoiceId, setLilithVoiceId] = useState('')

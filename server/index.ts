@@ -2,6 +2,7 @@ import 'node:process'
 import express from 'express'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { createServer as createViteServer } from 'vite'
 import { GoogleGenAI } from '@google/genai'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
@@ -258,6 +259,80 @@ async function generateAzureTts(text: string, speaker: TtsSpeaker, override?: { 
   }
 }
 
+// ── Chatterbox yerel TTS (M4 Pro resident servis) ────────────────────────────
+// CHATTERBOX_PYTHON ayarlıysa localhost:8777'deki Python servisi kullanılır;
+// ayarsızsa bu katman sessizce atlanır (merdiven Edge'e düşer).
+const CHATTERBOX_PYTHON = process.env.CHATTERBOX_PYTHON ?? ''
+const LOCAL_TTS_EXAGGERATION = parseFloat(process.env.LOCAL_TTS_EXAGGERATION ?? '1.2')
+const LOCAL_TTS_DRAMATIZE = (process.env.LOCAL_TTS_DRAMATIZE ?? '1') === '1'
+const LOCAL_TTS_SPEAKERS = (process.env.LOCAL_TTS_SPEAKERS ?? 'lilith').split(',')
+const LOCAL_TTS_URL = 'http://127.0.0.1:8777'
+
+let localProc: ChildProcess | null = null
+let localAvailableUntil = 0 // sağlık-cache (30sn TTL) — her turda health-check spam olmasın
+
+async function ensureLocalService(): Promise<boolean> {
+  if (Date.now() < localAvailableUntil) return true
+  // Harici/resident servis modu: port ayakta ise CHATTERBOX_PYTHON gerekmez
+  try {
+    const r = await fetch(`${LOCAL_TTS_URL}/health`, { signal: AbortSignal.timeout(800) })
+    if (r.ok) { localAvailableUntil = Date.now() + 30_000; return true }
+  } catch { /* yoksa ve CHATTERBOX_PYTHON varsa spawn deneriz */ }
+  if (!CHATTERBOX_PYTHON) return false
+  if (!localProc) {
+    console.log('[local-tts] servis başlatılıyor...')
+    localProc = spawn(CHATTERBOX_PYTHON, [path.join(__dirname, 'chatterbox_service.py')], {
+      stdio: ['ignore', 'inherit', 'inherit'],
+    })
+    localProc.on('exit', () => { localProc = null; localAvailableUntil = 0 })
+  }
+  // model yükleme ~10sn — en fazla 60sn bekle
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 500))
+    try {
+      const r = await fetch(`${LOCAL_TTS_URL}/health`, { signal: AbortSignal.timeout(500) })
+      if (r.ok) { localAvailableUntil = Date.now() + 30_000; return true }
+    } catch { /* hâlâ inmiyor */ }
+  }
+  return false
+}
+
+// Kazanan reçete: replikte dramatik duraksamalar (transcript'e DEĞİL sadece TTS'e uygulanır)
+function dramatizeForTts(text: string): string {
+  const sentences = text.split(/(?<=[.!?…])\s+/)
+  return sentences.map(s => {
+    const words = s.split(/\s+/)
+    if (words.length < 6) return s
+    return [words[0] + '…', ...words.slice(1, -2), '…' + words.slice(-2).join(' ')].join(' ')
+      .replace('……', '…')
+  }).join(' ')
+}
+
+async function generateLocalTts(text: string, speaker: TtsSpeaker): Promise<{ audio: string; mimeType: string } | null> {
+  if (!LOCAL_TTS_SPEAKERS.includes(speaker)) return null
+  if (!(await ensureLocalService())) return null
+  try {
+    const ttsText = LOCAL_TTS_DRAMATIZE ? dramatizeForTts(text) : text
+    const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: ttsText, exaggeration: LOCAL_TTS_EXAGGERATION }),
+      signal: AbortSignal.timeout(60_000),
+    })
+    if (!r.ok) {
+      console.error(`Local TTS error: ${r.status}`)
+      return null
+    }
+    const buf = Buffer.from(await r.arrayBuffer())
+    if (buf.length === 0) return null
+    return { audio: buf.toString('base64'), mimeType: 'audio/wav' }
+  } catch (err) {
+    console.error('Local TTS error:', err instanceof Error ? err.message : err)
+    localAvailableUntil = 0 // sonraki turda tekrar dene
+    return null
+  }
+}
+
 async function main() {
   const app = express()
   app.use(express.json())
@@ -267,7 +342,7 @@ async function main() {
     const { speaker, history = [], ttsEngine = 'edge' } = req.body as {
       speaker: TtsSpeaker
       history: Message[]
-      ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure'
+      ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure' | 'local'
     }
 
     if (!speaker || !['lilith', 'generic'].includes(speaker)) {
@@ -285,11 +360,15 @@ async function main() {
         return res.json({ text })
       }
 
-      // Merdiven: gemini -> azure -> edge -> null (istemci tarayıcı TTS'e düşer)
+      // Merdiven: gemini -> local -> azure -> edge -> null (istemci tarayıcı TTS'e düşer)
       let ttsResult: { audio: string; mimeType: string } | null = null
       if (ttsEngine === 'gemini') {
         ttsResult = await generateGeminiTts(text, speaker)
-        if (!ttsResult) console.warn('Gemini TTS düştü — Azure/Edge fallback')
+        if (!ttsResult) console.warn('Gemini TTS düştü — local/azure/edge fallback')
+      }
+      if (!ttsResult && (ttsEngine === 'local' || ttsEngine === 'gemini')) {
+        ttsResult = await generateLocalTts(text, speaker)
+        if (!ttsResult && ttsEngine === 'local') console.warn('Local TTS düştü — azure/edge fallback')
       }
       if (!ttsResult && (ttsEngine === 'azure' || ttsEngine === 'gemini')) {
         ttsResult = await generateAzureTts(text, speaker)
@@ -309,12 +388,13 @@ async function main() {
   })
 
   app.post('/api/tts', async (req, res) => {
-    const { text, speaker, engine = 'edge', voice, style } = req.body as {
+    const { text, speaker, engine = 'edge', voice, style, exaggeration } = req.body as {
       text: string
       speaker: TtsSpeaker
-      engine?: 'edge' | 'gemini' | 'azure'
+      engine?: 'edge' | 'gemini' | 'azure' | 'local'
       voice?: string
       style?: string
+      exaggeration?: number
     }
     if (!text || !speaker || !['lilith', 'generic'].includes(speaker)) {
       return res.status(400).json({ error: 'text ve speaker zorunlu.' })
@@ -325,7 +405,21 @@ async function main() {
         ? await generateGeminiTts(text, speaker, { voice, style })
         : engine === 'azure'
           ? await generateAzureTts(text, speaker, { voice, style })
-          : await generateEdgeTts(text, speaker)
+          : engine === 'local'
+            ? await (async () => {
+                if (!LOCAL_TTS_SPEAKERS.includes(speaker)) return null
+                if (!(await ensureLocalService())) return null
+                const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text, exaggeration: exaggeration ?? LOCAL_TTS_EXAGGERATION }),
+                  signal: AbortSignal.timeout(60_000),
+                })
+                if (!r.ok) return null
+                const buf = Buffer.from(await r.arrayBuffer())
+                return buf.length ? { audio: buf.toString('base64'), mimeType: 'audio/wav' } : null
+              })()
+            : await generateEdgeTts(text, speaker)
       if (!result) return res.status(500).json({ error: 'TTS üretilemedi.' })
       return res.json(result)
     } catch (err: unknown) {
