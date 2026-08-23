@@ -33,7 +33,7 @@ npm run dev                # http://localhost:3000
 | `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) otomatik başlar. Ayarsızsa katman atlanır |
 | `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti default'u. Default 1.2 — beat intensity varsa override edilir (low 0.8 / mid 1.2 / high 1.7) |
 | `LOCAL_TTS_DRAMATIZE` | No | TTS metnine dramatik `…` duraksamaları (transcript'e dokunmaz). Default 1 |
-| `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler. Default `lilith,varlik` (referanslar: assets/voices/{lilith,varlik}-ref.wav) |
+| `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler (iç kimlikler). Default `lilith,generic` (referanslar: assets/voices/{lilith,varlik}-ref.wav) |
 | `PORT` | No | Default 3000 |
 
 ## Project structure
@@ -81,8 +81,8 @@ Beat şeması: her replik {text, mood, intensity} — intensity Chatterbox abart
 
 | Character | System prompt role | TTS voice | Color |
 |-----------|-------------------|-----------|-------|
-| Kraliçe Lilith | Zarif, manipülatif kraliçe | `tr-TR-EmelNeural` | #D4AF37 (gold) |
-| Varlık | Tabula rasa, şekillenmemiş | `tr-TR-AhmetNeural` | #D0D0D0 (white) |
+| Kraliçe Lilith | Zarif, manipülatif kraliçe | Chatterbox (`lilith-ref.wav`) · Edge fb: `tr-TR-EmelNeural` | #D4AF37 (gold) |
+| Varlık | Tabula rasa, şekillenmemiş | Chatterbox (`varlik-ref.wav`, Iapetus) · Edge fb: `tr-TR-AhmetNeural` | #D0D0D0 (white) |
 
 ## Audio playback
 
