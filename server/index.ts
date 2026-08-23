@@ -354,7 +354,12 @@ const LOCAL_TTS_EXAGGERATION = parseFloat(process.env.LOCAL_TTS_EXAGGERATION ?? 
 const LOCAL_TTS_DRAMATIZE = (process.env.LOCAL_TTS_DRAMATIZE ?? '1') === '1'
 const LOCAL_TTS_SPEAKERS = (process.env.LOCAL_TTS_SPEAKERS ?? 'lilith,generic').split(',')
 // Kişi-bazlı referans klip = ses kimliği (assets/voices altında)
-const LOCAL_TTS_REFS: Record<string, string> = { lilith: 'lilith-ref.wav', generic: 'varlik-ref.wav' }
+// Kişi-bazlı yerel TTS profili: ref = ses kimliği, cfg = ref'e sadakat (casting 08-23)
+// Lilith: FR tınısı, cfg 0.3 (kimlik güçlü) · Varlık: IT tınısı, cfg 0.1 (aksan-bastırık)
+const LOCAL_TTS_PROFILE: Record<string, { ref: string; cfg: number }> = {
+  lilith: { ref: 'lilith-ref.wav', cfg: 0.3 },
+  generic: { ref: 'varlik-ref.wav', cfg: 0.1 },
+}
 const LOCAL_TTS_URL = 'http://127.0.0.1:8777'
 
 let localProc: ChildProcess | null = null
@@ -396,7 +401,7 @@ async function generateLocalTts(text: string, speaker: TtsSpeaker, exaggerationO
     const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: ttsText, exaggeration: exaggerationOverride ?? LOCAL_TTS_EXAGGERATION, ref: LOCAL_TTS_REFS[speaker] }),
+      body: JSON.stringify({ text: ttsText, exaggeration: exaggerationOverride ?? LOCAL_TTS_EXAGGERATION, ref: LOCAL_TTS_PROFILE[speaker]?.ref, cfg_weight: LOCAL_TTS_PROFILE[speaker]?.cfg }),
       signal: AbortSignal.timeout(120_000),
     })
     if (!r.ok) {
@@ -557,7 +562,7 @@ async function main() {
                 const r = await fetch(`${LOCAL_TTS_URL}/tts`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ text, exaggeration: exaggeration ?? LOCAL_TTS_EXAGGERATION, ref: LOCAL_TTS_REFS[speaker] }),
+                  body: JSON.stringify({ text, exaggeration: exaggeration ?? LOCAL_TTS_EXAGGERATION, ref: LOCAL_TTS_PROFILE[speaker]?.ref, cfg_weight: LOCAL_TTS_PROFILE[speaker]?.cfg }),
                   signal: AbortSignal.timeout(120_000),
                 })
                 if (!r.ok) return null
