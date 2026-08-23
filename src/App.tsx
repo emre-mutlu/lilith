@@ -8,6 +8,8 @@ import CenterOverlay from './components/CenterOverlay'
 import ControlBar from './components/ControlBar'
 import TranscriptStream from './components/footer/TranscriptStream'
 import SimParameters, { type Telemetry } from './components/footer/SimParameters'
+import SceneCard from './components/SceneCard'
+import { AmbientEngine } from './lib/ambient'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -148,6 +150,20 @@ export default function App() {
   const browserRateRef = useRef(browserRate); browserRateRef.current = browserRate
   const browserPitchRef = useRef(browserPitch); browserPitchRef.current = browserPitch
 
+  // Faz 4: prosedürel ambient underscore (kullanıcı hareketiyle başlar, Safari-güvenli)
+  const ambientRef = useRef<AmbientEngine | null>(null)
+  const [ambientOn, setAmbientOn] = useState(false)
+
+  const toggleAmbient = useCallback(async () => {
+    if (!ambientRef.current) {
+      ambientRef.current = new AmbientEngine(p => setAmbientOn(p))
+    }
+    const ok = await ambientRef.current.toggle()
+    if (!ok && !ambientRef.current.playing) setAmbientOn(false)
+  }, [])
+
+  useEffect(() => () => ambientRef.current?.dispose(), [])
+
   const [allVoices, setAllVoices] = useState<SpeechSynthesisVoice[]>([])
   const [lilithVoiceId, setLilithVoiceId] = useState('')
   const [varlikVoiceId, setVarlikVoiceId] = useState('')
@@ -193,6 +209,13 @@ export default function App() {
 
   const sentiment = useMemo(() => globalSentiment(messages), [messages])
   const sentimentRgb = useMemo(() => hexToRgb(sentiment.color), [sentiment.color])
+
+  // Sentiment → mood sürüşü (ambient açıksa canlı nefes değiştirir)
+  useEffect(() => {
+    if (!ambientRef.current?.playing) return
+    const tension = sentiment.dominant === 'user' ? 0.7 : sentiment.dominant === 'lilith' ? 0.35 : 0.15
+    ambientRef.current.setMood({ brightness: sentiment.percent / 100, tension })
+  }, [sentiment])
 
   // ── Audio helpers ────────────────────────────────────────────────────────
 
@@ -671,6 +694,31 @@ export default function App() {
         }} className="mobile-word">
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'rgba(212,175,55,0.65)', letterSpacing: '0.12em' }}>OKUNAN KELİME: </span>
           <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: activeSpeaker === 'lilith' ? '#D4AF37' : 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>{currentWord}</span>
+        </div>
+      )}
+
+      {/* Sol alt yüzen stack: sahne kartı + ambient anahtarı (oturum başlayınca) */}
+      {messages.length > 0 && (
+        <div style={{
+          position: 'fixed', left: 24, bottom: 90, zIndex: 40,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+        }}>
+          <SceneCard scenario={scenario} />
+          <button
+            onClick={toggleAmbient}
+            title="Prosedürel ambiyans (duygu rengine nefes verir)"
+            style={{
+              background: ambientOn ? 'rgba(212,175,55,0.12)' : 'rgba(10,8,16,0.75)',
+              backdropFilter: 'blur(12px)',
+              border: `1px solid ${ambientOn ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.18)'}`,
+              color: ambientOn ? '#D4AF37' : 'rgba(255,255,255,0.6)',
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+              letterSpacing: '0.15em', padding: '7px 14px', borderRadius: 20,
+              cursor: 'pointer',
+            }}
+          >
+            ♪ AMBİYANS
+          </button>
         </div>
       )}
 

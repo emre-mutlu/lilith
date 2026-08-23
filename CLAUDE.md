@@ -117,3 +117,9 @@ npm run typecheck # tsc --noEmit
 - Prelüd: eğilim(24) + gizli + yay(kishōtenketsu/jo-ha-kyū/…) + gerilim özü + doku + tempo + duygu rengi + Varlık eğrisi.
 - Organik yaylar: zaman çizelgesi YOK — dönüm noktası zamanlaması modelin yargısına göre; tutarlılık maddesi prompt'ta.
 - Rol-dürüst contents: karakter kendi repliklerini `model` rolünde görür. Pin-bellek: high-intensity alıntılar ≤6, pencere dışından beslenir.
+
+## Faz 4 · Eser katmanı (prova edildi, ilk entegrasyon canlı)
+
+- **Prosedürel ambient** (`src/lib/ambient.ts`): Web Audio drone+hava, sentiment'ten mood sürer (brightness=percent, tension=dominant). Sol alt "♪ AMBİYANS" düğmesi. **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
+- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz) ile senaryo eksenlerinden prompt kurup görsel üretir; sol altta yüzen 150px kart, ↻ yeni seed. Yer/tasarım kararı sonraya — Emre: "görülebilir bir yerde dursun".
+- Gemini görsel (`gemini-3.1-flash-image`, `nano-banana-pro-preview`) + Lyria: free kota dar (429) → parkta. Pollinations latency 2-35sn oynak.
