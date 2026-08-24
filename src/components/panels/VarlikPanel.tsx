@@ -39,6 +39,14 @@ export default function VarlikPanel({ active, state, lastMessage, messages }: Pr
   const titleAlpha = 0.18 + 0.62 * warmth
   const idleBorder = 0.06 + 0.12 * warmth
 
+  // Portre aşaması: belirişle şekilsiz → şekileniyor → beliri
+  const asamaIdx = warmth < 1 / 3 ? 0 : warmth < 2 / 3 ? 1 : 2
+  const VARLIK_PORTRELERI = [
+    '/portraits/varlik-sekilsiz.jpg',
+    '/portraits/varlik-sekileniyor.jpg',
+    '/portraits/varlik-beliri.jpg',
+  ]
+
   return (
     <div style={{
       position: 'relative',
@@ -62,16 +70,36 @@ export default function VarlikPanel({ active, state, lastMessage, messages }: Pr
           SUBJECT B: TABULA RASA
         </div>
 
-        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 68,
-          lineHeight: 1, margin: '10px 0 8px', color: `rgba(255,255,255,${titleAlpha})`, fontWeight: 500,
-          textShadow: `0 0 ${24 * warmth}px rgba(208,208,208,${0.35 * warmth})`,
-          transition: 'color 1.2s ease, text-shadow 1.2s ease' }}>
-          Varlık<span style={{ color: 'rgba(255,255,255,0.30)' }}>.</span>
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 68,
+              lineHeight: 1, margin: '10px 0 8px', color: `rgba(255,255,255,${titleAlpha})`, fontWeight: 500,
+              textShadow: `0 0 ${24 * warmth}px rgba(208,208,208,${0.35 * warmth})`,
+              transition: 'color 1.2s ease, text-shadow 1.2s ease' }}>
+              Varlık<span style={{ color: 'rgba(255,255,255,0.30)' }}>.</span>
+            </h2>
 
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-          color: 'rgba(255,255,255,0.18)', letterSpacing: '0.05em', marginBottom: 8 }}>
-          [Bellek: {varlikMessages.length === 0 ? 'Boş' : `${varlikMessages.length} iz · %${Math.round(warmth * 100)}`}]
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+              color: 'rgba(255,255,255,0.18)', letterSpacing: '0.05em', marginBottom: 8 }}>
+              [Bellek: {varlikMessages.length === 0 ? 'Boş' : `${varlikMessages.length} iz · %${Math.round(warmth * 100)}`}]
+            </div>
+          </div>
+          <div title="Varlık — bellek doldukça belirir" style={{
+            position: 'relative', width: 104, height: 130, marginTop: 10, flexShrink: 0,
+            borderRadius: 4, overflow: 'hidden',
+            border: `1px solid rgba(255,255,255,${0.10 + 0.25 * warmth})`,
+            boxShadow: `0 0 ${8 + 16 * warmth}px rgba(208,208,208,${0.08 + 0.20 * warmth})`,
+            transition: 'box-shadow 1.2s ease',
+            filter: `saturate(${0.7 + 0.3 * warmth})`,
+          }}>
+            {VARLIK_PORTRELERI.map((src, i) => (
+              <img key={src} src={src} alt="" style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                objectFit: 'cover', objectPosition: '50% 20%',
+                opacity: i === asamaIdx ? 1 : 0, transition: 'opacity 1.4s ease',
+              }} />
+            ))}
+          </div>
         </div>
 
         <div style={{ marginTop: 20, minHeight: 110 }}>
