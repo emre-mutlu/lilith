@@ -1,4 +1,4 @@
-// Faz 4 çekirdeği: prosedürel ambient underscore (prova: /tmp/lilith-eser/ambient-demo.html)
+// Faz 4 çekirdeği: prosedürel ambient underscore
 // Safari dersleri: context'i kullanıcı hareketinde yarat · await resume + ikinci deneme ·
 // sekme gizlenince suspend edilir → visibilitychange ile yönetilir.
 
@@ -15,6 +15,11 @@ type Nodes = {
   oscB: OscillatorNode
   noiseFilt: BiquadFilterNode
   noiseGain: GainNode
+  /** filtre süpürme genliği — gerilimle açılır */
+  lfoGain: GainNode
+  /** kalp-atışı katmanı — gerilimle hızlanır ve derinleşir */
+  pulseLfo: OscillatorNode
+  pulseDepth: GainNode
 }
 
 export class AmbientEngine {
@@ -77,6 +82,11 @@ export class AmbientEngine {
     this.n.oscB.frequency.setTargetAtTime(110.6 + m.tension * 2.6, t, 2)
     this.n.noiseFilt.frequency.setTargetAtTime(750 + m.brightness * 1250, t, 1.6)
     this.n.noiseGain.gain.setTargetAtTime(0.06 + m.tension * 0.09, t, 1.6)
+    // Duygu eşlemesi v2: gerilim yükseldikçe filtre süpürmesi genişler ve
+    // drone'a kalp-atışı gibi derinleşen bir nabız biner.
+    this.n.lfoGain.gain.setTargetAtTime(120 + m.tension * 180, t, 2)
+    this.n.pulseLfo.frequency.setTargetAtTime(0.12 + m.tension * 0.45, t, 2.2)
+    this.n.pulseDepth.gain.setTargetAtTime(0.012 + m.tension * 0.055, t, 2.2)
   }
 
   dispose(): void {
@@ -111,6 +121,11 @@ export class AmbientEngine {
     const lfoGain = ctx.createGain(); lfoGain.gain.value = 140
     lfo.connect(lfoGain); lfoGain.connect(filt.frequency); lfo.start()
 
+    // Nefes/puls: drone kazancına binen yavaş LFO — gerilimle hızlanır (kalp atışı hissi)
+    const pulseLfo = ctx.createOscillator(); pulseLfo.type = 'sine'; pulseLfo.frequency.value = 0.15
+    const pulseDepth = ctx.createGain(); pulseDepth.gain.value = 0.02
+    pulseLfo.connect(pulseDepth); pulseDepth.connect(g.gain); pulseLfo.start()
+
     const len = ctx.sampleRate * 3
     const buf = ctx.createBuffer(1, len, ctx.sampleRate)
     const ch = buf.getChannelData(0)
@@ -123,6 +138,6 @@ export class AmbientEngine {
     noise.connect(noiseFilt); noiseFilt.connect(noiseGain); noiseGain.connect(master)
     noise.start()
 
-    return { master, filt, oscB, noiseFilt, noiseGain }
+    return { master, filt, oscB, noiseFilt, noiseGain, lfoGain, pulseLfo, pulseDepth }
   }
 }

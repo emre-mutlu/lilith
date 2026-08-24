@@ -124,6 +124,6 @@ npm run typecheck # tsc --noEmit
 
 ## Faz 4 · Eser katmanı (prova edildi, ilk entegrasyon canlı)
 
-- **Prosedürel ambient** (`src/lib/ambient.ts`): Web Audio drone+hava, sentiment'ten mood sürer (brightness=percent, tension=dominant). Sol alt "♪ AMBİYANS" düğmesi. **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
-- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz) ile senaryo eksenlerinden prompt kurup görsel üretir; sol altta yüzen 150px kart, ↻ yeni seed. Yer/tasarım kararı sonraya — Emre: "görülebilir bir yerde dursun".
+- **Prosedürel ambient** (`src/lib/ambient.ts`): Web Audio drone+hava; sentiment'ten mood sürer (brightness=percent, tension=baskın konuşan+tırmanış eğimi+high-intensity dalgası). Gerilimle filtre süpürmesi genişler, kalp-atışı nabzı hızlanır. Sol alt "♪ AMBİYANS" düğmesi. **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
+- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz) ile senaryo eksenlerinden prompt kurup görsel üretir; footer sol hücresine yerleşik (kart + ambiyans rayı, SimParameters yanında), ↻ yeni seed. İnce tasarım sonraya — Emre kararı açık.
 - Gemini görsel (`gemini-3.1-flash-image`, `nano-banana-pro-preview`) + Lyria: free kota dar (429) → parkta. Pollinations latency 2-35sn oynak.

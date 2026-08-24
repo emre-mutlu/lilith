@@ -228,12 +228,20 @@ export default function App() {
   const sentiment = useMemo(() => globalSentiment(messages), [messages])
   const sentimentRgb = useMemo(() => hexToRgb(sentiment.color), [sentiment.color])
 
-  // Sentiment → mood sürüşü (ambient açıksa canlı nefes değiştirir)
+  // Sentiment → mood sürüşü v2: baskın konuşanın tabanı + son repliklerin
+  // tırmanış eğimi + high-intensity dalgası → ambient'i canlı nefes aldırır.
   useEffect(() => {
     if (!ambientRef.current?.playing) return
-    const tension = sentiment.dominant === 'user' ? 0.7 : sentiment.dominant === 'lilith' ? 0.35 : 0.15
-    ambientRef.current.setMood({ brightness: sentiment.percent / 100, tension })
-  }, [sentiment])
+    const recent = messages.slice(-6)
+    const half = Math.floor(recent.length / 2)
+    const avgScore = (arr: typeof recent) => arr.length ? arr.reduce((a, m) => a + scoreMessage(m).score, 0) / arr.length : 0
+    const trendN = recent.length >= 4 ? Math.max(-1, Math.min(1, avgScore(recent.slice(half)) - avgScore(recent.slice(0, half)))) : 0
+    const surge = messages.slice(-4).filter(m => m.intensity === 'high').length / 4
+    const base = sentiment.dominant === 'user' ? 0.65 : sentiment.dominant === 'lilith' ? 0.35 : 0.15
+    const tension = Math.min(1, base * 0.6 + Math.max(0, trendN) * 0.25 + surge * 0.3)
+    const brightness = Math.min(1, (sentiment.percent / 100) * 0.9 + surge * 0.1)
+    ambientRef.current.setMood({ brightness, tension })
+  }, [sentiment, messages])
 
   // ── Audio helpers ────────────────────────────────────────────────────────
 
@@ -716,53 +724,53 @@ export default function App() {
         </div>
       )}
 
-      {/* Sol alt yüzen stack: sahne kartı + ambient anahtarı (oturum başlayınca) */}
-      {messages.length > 0 && (
-        <div style={{
-          position: 'fixed', left: 24, bottom: 90, zIndex: 40,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-        }}>
-          <SceneCard scenario={scenario} />
-          <button
-            onClick={toggleAmbient}
-            title="Prosedürel ambiyans (duygu rengine nefes verir)"
-            style={{
-              background: ambientOn ? 'rgba(212,175,55,0.12)' : 'rgba(10,8,16,0.75)',
-              backdropFilter: 'blur(12px)',
-              border: `1px solid ${ambientOn ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.18)'}`,
-              color: ambientOn ? '#D4AF37' : 'rgba(255,255,255,0.6)',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
-              letterSpacing: '0.15em', padding: '7px 14px', borderRadius: 20,
-              cursor: 'pointer',
-            }}
-          >
-            ♪ AMBİYANS
-          </button>
-        </div>
-      )}
-
       {/* Footer */}
       <footer style={{
         borderTop: '1px solid rgba(255,255,255,0.08)',
         background: 'rgba(0,0,0,0.35)',
         minHeight: 200,
         display: 'grid',
-        gridTemplateColumns: '300px 1fr',
+        gridTemplateColumns: 'auto 1fr',
       }}>
-        <SimParameters
-          voiceEngine={voiceEngine}
-          setVoiceEngine={setVoiceEngine}
-          localTts={localTts}
-          rate={browserRate}
-          setRate={setBrowserRate}
-          pitch={browserPitch}
-          setPitch={setBrowserPitch}
-          telemetry={{
-            ...telemetry,
-            turns: messages.filter(m => m.sender !== 'user').length,
-            words: wordCount,
-          }}
-        />
+        <div style={{ display: 'flex', alignItems: 'stretch', minWidth: 0 }}>
+          {messages.length > 0 && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              alignItems: 'center', gap: 10, padding: '10px 0 10px 16px',
+            }}>
+              <SceneCard scenario={scenario} />
+              <button
+                onClick={toggleAmbient}
+                title="Prosedürel ambiyans (duygu rengine nefes verir)"
+                style={{
+                  background: ambientOn ? 'rgba(212,175,55,0.12)' : 'rgba(10,8,16,0.75)',
+                  backdropFilter: 'blur(12px)',
+                  border: `1px solid ${ambientOn ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.18)'}`,
+                  color: ambientOn ? '#D4AF37' : 'rgba(255,255,255,0.6)',
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+                  letterSpacing: '0.15em', padding: '7px 14px', borderRadius: 20,
+                  cursor: 'pointer',
+                }}
+              >
+                ♪ AMBİYANS
+              </button>
+            </div>
+          )}
+          <SimParameters
+            voiceEngine={voiceEngine}
+            setVoiceEngine={setVoiceEngine}
+            localTts={localTts}
+            rate={browserRate}
+            setRate={setBrowserRate}
+            pitch={browserPitch}
+            setPitch={setBrowserPitch}
+            telemetry={{
+              ...telemetry,
+              turns: messages.filter(m => m.sender !== 'user').length,
+              words: wordCount,
+            }}
+          />
+        </div>
         <TranscriptStream
           messages={messages}
           currentWord={currentWord}
