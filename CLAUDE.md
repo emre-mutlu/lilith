@@ -9,7 +9,7 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
 | Build | Vite 5 (middleware mode in dev) |
 | Backend | Express + TypeScript (`server/index.ts`) |
-| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS: **Fish Audio** default (`s2.1-pro-free`, bulut) → Chatterbox yerel fallback → Edge → tarayıcı · Azure PARK'ta (08-24) · Gemini TTS parkta (bedava kota 10 istek/gün) |
+| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS: **Fish Audio** default (`s2.1-pro-free`, bulut) → Chatterbox yerel fallback (bağlıysa) → tarayıcı · Azure/Edge/Gemini-TTS PARK'ta veya kaldırıldı (08-24) |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
 ## First-time setup
@@ -70,10 +70,10 @@ src/
 
 **POST /api/generate**
 ```json
-{ "speaker": "lilith" | "generic", "history": [...], "ttsEngine": "local"|"azure"|"edge"|"gemini"|"browser",
+{ "speaker": "lilith" | "generic", "history": [...], "ttsEngine": "fish"|"local"|"gemini"|"browser",
   "scenario"?, "sessionId"? }
 → { "text", "mood", "intensity": "low"|"mid"|"high", "audio"?, "mimeType"?,
-    "engine": "local"|"azure"|"edge"|"gemini"|"browser"|"none", "latencyMs" }
+    "engine": "fish"|"local"|"gemini"|"browser"|"none", "latencyMs" }
 ```
 Beat şeması: her replik {text, mood, intensity} — intensity Chatterbox abartısını sürer. High-intensity anlar pin-belleğe (≤6) işlenir. Her tur `sessions/<sessionId>.jsonl`'e loglanır.
 
@@ -83,16 +83,16 @@ Beat şeması: her replik {text, mood, intensity} — intensity Chatterbox abart
 
 | Character | System prompt role | TTS voice | Color |
 |-----------|-------------------|-----------|-------|
-| Kraliçe Lilith | Zarif, manipülatif kraliçe | Chatterbox (`lilith-ref.wav`, FR tınısı, cfg 0.3) · Edge fb: `tr-TR-EmelNeural` | #D4AF37 (gold) |
-| Varlık | Tabula rasa, şekillenmemiş | Chatterbox (`varlik-ref.wav`, IT tınısı, cfg 0.1) · Edge fb: `tr-TR-AhmetNeural` | #D0D0D0 (white) |
+| Kraliçe Lilith | Zarif, manipülatif kraliçe | Fish: L4 LEILA (geçici) · Chatterbox bağlıysa `lilith-ref.wav` | #D4AF37 (gold) |
+| Varlık | Tabula rasa, şekillenmemiş | Fish: V3 mazlum kiper (geçici) · Chatterbox bağlıysa `varlik-ref.wav` | #D0D0D0 (white) |
 
-Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT), `LOCAL_TTS_PROFILE` kişi-bazlı ref+cfg taşır. İlk nesil Achernar/Iapetus Gemini-damıtmaları `/tmp/lilith-eser`'de arşivli — "sentetik damıtma" ile temiz kaynağa geçiş seçeneği açık.
+Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT), `LOCAL_TTS_PROFILE` kişi-bazlı ref+cfg taşır. İlk nesil Achernar/Iapetus Gemini-damıtmaları + casting kaynakları `~/Documents/Claude/arsiv/lilith-eser`'de.
 
 ## Audio playback
 
-- **Edge-TTS mode**: server (`msedge-tts`) returns base64 MP3 (`audio/mpeg`) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
+- **Fish mode (default)**: server returns base64 WAV (`audio/wav`, 44.1kHz) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local → edge (Azure parkta, atlanır). Server açılışında Chatterbox erken ısınır; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9. Ses seçimi kütüphaneden: L4 LEILA (Lilith) · V3 mazlum kiper (Varlık) — geçici, Voice Design ile yükseltilecek
+- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (bağlıysa) → tarayıcı TTS. Server açılışında Chatterbox erken ısınır; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9. Ses seçimi kütüphaneden: L4 LEILA (Lilith) · V3 mazlum kiper (Varlık) — geçici, Voice Design ile yükseltilecek
 - **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
 
 ## Sentiment system

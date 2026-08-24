@@ -22,13 +22,12 @@ React 18 + TS + Tailwind v4  ←→  Express + TS (server/)
 
 ## Ses merdiveni
 
-`local → azure → edge → tarayıcı` — seçilen motor düşerse sıradaki katman devralır; yanıtın `engine` alanı sesi kimin verdiğini söyler.
+`fish → local → tarayıcı` — seçilen motor düşerse sıradaki katman devralır; yanıtın `engine` alanı sesi kimin verdiğini söyler.
 
 | Katman | Not |
 |---|---|
-| **local** | Chatterbox (MPS, ~1.2× gerçek-zamanlı). Referans klip = Lilith'in sabit ses kimliği (`assets/voices/lilith-ref.wav`), abartısı = performans. `CHATTERBOX_PYTHON` ayarlıysa Node servisi kendisi başlatır |
-| **azure** | Azure Speech F0 (500K kar/ay) — key gerekli |
-| **edge** | `msedge-tts`, ücretsiz, tr-TR Emel/Ahmet Neural |
+| **fish** | Fish Audio bulutu (`s2.1-pro-free`, ücretsiz) — kütüphane sesleri `.env`'deki model ID'lerinden |
+| **local** | Chatterbox (MPS, ~1.2× gerçek-zamanlı). Referans klip = sabit ses kimliği (`assets/voices/*.wav`). `CHATTERBOX_PYTHON` ayarlıysa Node servisi kendisi başlatır |
 | **gemini** | Bedava kota 10 istek/gün — özel anlar için parkta |
 | **browser** | SpeechSynthesis, karakter prosodisi + duygu modülasyonu |
 

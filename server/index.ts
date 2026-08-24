@@ -18,7 +18,6 @@ import {
   stageStateBlock, directorNotesBlock,
 } from './intervention.js'
 import { GoogleGenAI } from '@google/genai'
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
@@ -70,17 +69,6 @@ Boyun eğme. Çekilme. Ama bunları sorgula da.
 Yalnızca saf diyalog metni üret. Parantez içi eylem veya açıklama ekleme.`,
 }
 
-// Edge TTS — karaktere özgü ses ve prosody
-const EDGE_VOICES: Record<string, string> = {
-  lilith: 'tr-TR-EmelNeural',   // kadın, sıcak, ekspresif
-  generic: 'tr-TR-AhmetNeural', // erkek, derin, nötr
-}
-// Lilith: ruhani/eterik — yavaş, hafif yüksek; Varlık: net ve nötr — boğuk değil
-const EDGE_PROSODY: Record<string, { rate: string; pitch: string }> = {
-  lilith:  { rate: '-15%', pitch: '+1st' },
-  generic: { rate: '+0%',  pitch: '+0st' },
-}
-
 // ── Gemini TTS (gemini-3.1-flash-tts-preview) ────────────────────────────────
 // Ses seçimi dinleme setiyle yapılacak; aşağıdaki adaylar spec Faz 1 listesi.
 // Stil prompt'ları "AUDIO PROFILE" formatında — ses × yönetmen ikilisi esas.
@@ -105,7 +93,7 @@ export const GEMINI_VOICE_CANDIDATES: Record<TtsSpeaker, GeminiVoiceCandidate[]>
   ],
 }
 
-// Seçilen birincil sesler (dinleme sonrası güncellenir). Şimdilik Edge birincil;
+// Seçilen birincil sesler (dinleme sonrası güncellenir);
 // ttsEngine='gemini' gelirse bu config kullanılır.
 const GEMINI_VOICES: Record<TtsSpeaker, GeminiVoiceCandidate> = {
   lilith: GEMINI_VOICE_CANDIDATES.lilith[0],
@@ -287,25 +275,6 @@ async function generateText(
     const text = stripPrefix(raw)
     if (!text) throw new Error('Boş yanıt alındı.')
     return { text, mood: '', intensity: 'mid' }
-  }
-}
-
-async function generateEdgeTts(text: string, speaker: 'lilith' | 'generic'): Promise<{ audio: string; mimeType: string } | null> {
-  try {
-    const tts = new MsEdgeTTS()
-    await tts.setMetadata(EDGE_VOICES[speaker], OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3)
-    const { audioStream } = tts.toStream(text, EDGE_PROSODY[speaker])
-    const chunks: Buffer[] = []
-    await new Promise<void>((resolve, reject) => {
-      audioStream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)))
-      audioStream.on('end', resolve)
-      audioStream.on('error', reject)
-    })
-    tts.close()
-    return { audio: Buffer.concat(chunks).toString('base64'), mimeType: 'audio/mpeg' }
-  } catch (err) {
-    console.error('Edge TTS error:', err)
-    return null
   }
 }
 
@@ -556,10 +525,10 @@ async function main() {
   })
 
   app.post('/api/generate', async (req, res) => {
-    const { speaker, history = [], ttsEngine = 'edge', scenario, sessionId } = req.body as {
-      speaker: TtsSpeaker
-      history: Message[]
-      ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
+      const { speaker, history = [], ttsEngine = 'fish', scenario, sessionId } = req.body as {
+        speaker: TtsSpeaker
+        history: Message[]
+        ttsEngine: 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
       scenario?: ScenarioPrelude
       sessionId?: string
     }
@@ -585,33 +554,29 @@ async function main() {
         return res.json({ text: beat.text, mood: beat.mood, intensity: beat.intensity, engine: 'browser', latencyMs: Date.now() - t0 })
       }
 
-      // Merdiven: fish -> local -> edge (gemini/azure eski seçenekler, key'siz atlanır)
+      // Merdiven: fish -> local -> none (istemci tarayıcı TTS'e düşer).
+      // Edge kaldırıldı (08-24); gemini/azure parkta, key'siz atlanır.
       // Yerel motora beat-intensity kalibrasyonu geçer (0.8 / 1.2 / 1.7)
       let ttsResult: { audio: string; mimeType: string } | null = null
-      let servedBy: 'fish' | 'gemini' | 'local' | 'azure' | 'edge' | 'none' = 'none'
+      let servedBy: 'fish' | 'gemini' | 'local' | 'azure' | 'none' = 'none'
       if (ttsEngine === 'fish') {
         ttsResult = await generateFishTts(beat.text, speaker, beat.intensity)
         if (ttsResult) servedBy = 'fish'
-        else console.warn('Fish TTS düştü — local/edge fallback')
+        else console.warn('Fish TTS düştü — local fallback')
       }
       if (!ttsResult && ttsEngine === 'gemini') {
         ttsResult = await generateGeminiTts(beat.text, speaker)
         if (ttsResult) servedBy = 'gemini'
-        else console.warn('Gemini TTS düştü — local/azure/edge fallback')
+        else console.warn('Gemini TTS düştü — local fallback')
       }
       if (!ttsResult && (ttsEngine === 'local' || ttsEngine === 'gemini')) {
         ttsResult = await generateLocalTts(beat.text, speaker, intensityToExaggeration(beat.intensity))
         if (ttsResult) servedBy = 'local'
-        else if (ttsEngine === 'local') console.warn('Local TTS düştü — azure/edge fallback')
+        else if (ttsEngine === 'local') console.warn('Local TTS düştü — istemci tarayıcı TTS\'e düşecek')
       }
-      if (!ttsResult && (ttsEngine === 'azure' || ttsEngine === 'gemini')) {
+      if (!ttsResult && ttsEngine === 'azure') {
         ttsResult = await generateAzureTts(beat.text, speaker)
         if (ttsResult) servedBy = 'azure'
-        else if (ttsEngine === 'azure') console.warn('Azure TTS düştü — Edge fallback')
-      }
-      if (!ttsResult) {
-        ttsResult = await generateEdgeTts(beat.text, speaker)
-        if (ttsResult) servedBy = 'edge'
       }
       return res.json({
         text: beat.text,
@@ -637,10 +602,10 @@ async function main() {
   })
 
   app.post('/api/tts', async (req, res) => {
-    const { text, speaker, engine = 'edge', voice, style, exaggeration } = req.body as {
+    const { text, speaker, engine = 'fish', voice, style, exaggeration } = req.body as {
       text: string
       speaker: TtsSpeaker
-      engine?: 'edge' | 'gemini' | 'azure' | 'local' | 'fish'
+      engine?: 'gemini' | 'azure' | 'local' | 'fish'
       voice?: string
       style?: string
       exaggeration?: number
@@ -670,7 +635,7 @@ async function main() {
                 const buf = Buffer.from(await r.arrayBuffer())
                 return buf.length ? { audio: buf.toString('base64'), mimeType: 'audio/wav' } : null
               })()
-            : await generateEdgeTts(text, speaker)
+            : null
       if (!result) return res.status(500).json({ error: 'TTS üretilemedi.' })
       return res.json(result)
     } catch (err: unknown) {

@@ -377,7 +377,7 @@ export default function App() {
       })
 
       try {
-        // Sunucudan ses geldiyse (local/azure/edge/gemini) Web Audio ile çal;
+        // Sunucudan ses geldiyse (fish/local/gemini) Web Audio ile çal;
         // yoksa (browser motoru ya da tüm merdiven düştüyse) tarayıcı TTS'e geç
         if (audio) {
           try {

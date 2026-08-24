@@ -30,7 +30,6 @@ const ENGINE_LABELS: Record<VoiceEngine, string> = {
   fish: 'Fish Audio',
   local: 'Chatterbox (yerel)',
   azure: 'Azure Neural',
-  edge: 'Edge Neural',
   gemini: 'Gemini TTS',
   browser: 'Tarayıcı',
 }
@@ -69,8 +68,6 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, localTts, r
         >
           <option value="fish" style={{ background: '#0A0A0A' }}>Fish Audio</option>
           <option value="local" style={{ background: '#0A0A0A' }}>Chatterbox (yerel)</option>
-          <option value="azure" style={{ background: '#0A0A0A' }}>Azure Neural</option>
-          <option value="edge" style={{ background: '#0A0A0A' }}>Edge Neural</option>
           <option value="gemini" style={{ background: '#0A0A0A' }}>Gemini TTS</option>
           <option value="browser" style={{ background: '#0A0A0A' }}>Tarayıcı</option>
         </select>
