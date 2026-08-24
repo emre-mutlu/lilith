@@ -1,4 +1,4 @@
-import type { VoiceEngine } from '../../types'
+import type { VoiceEngine } from '../../../shared/types'
 
 export interface Telemetry {
   lastLatencyMs: number | null

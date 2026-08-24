@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { Message, SpeakerState } from '../../types'
+import type { Message, SpeakerState } from '../../../shared/types'
 import { scoreMessage } from '../../lib/sentiment'
 
 const BARS = [1, 3, 5, 3, 2, 4, 3, 2, 1, 4, 2]

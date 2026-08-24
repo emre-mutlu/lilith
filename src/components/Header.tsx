@@ -1,4 +1,4 @@
-import type { GlobalSentiment } from '../types'
+import type { GlobalSentiment } from '../../shared/types'
 
 interface Props {
   sentiment: GlobalSentiment

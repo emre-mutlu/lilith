@@ -1,4 +1,4 @@
-import type { SessionState, InterventionMode } from '../types'
+import type { SessionState, InterventionMode } from '../../shared/types'
 
 // Inline SVG icons (no external dependency needed)
 function IconPlay() {

@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import type { Message } from '../../types'
+import type { Message } from '../../../shared/types'
 import { scoreMessage, hexToRgb } from '../../lib/sentiment'
 
 const LABELS: Record<string, string> = {

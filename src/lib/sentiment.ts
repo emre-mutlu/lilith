@@ -1,4 +1,4 @@
-import type { Message, MessageScore, GlobalSentiment } from '../types'
+import type { Message, MessageScore, GlobalSentiment } from '../../shared/types'
 
 // Lilith'in dili: gerçeklik, mutlaklık, güç, felsefi çekim
 const LILITH_KEYWORDS = [

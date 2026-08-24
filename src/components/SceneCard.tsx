@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { ScenarioPrelude } from '../types'
+import type { ScenarioPrelude } from '../../shared/types'
 
 interface Props {
   scenario: ScenarioPrelude | null

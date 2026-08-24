@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude, InterventionMode } from './types'
+import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude, InterventionMode } from '../shared/types'
 import { globalSentiment, hexToRgb, scoreMessage } from './lib/sentiment'
 import Header from './components/Header'
 import LilithPanel from './components/panels/LilithPanel'

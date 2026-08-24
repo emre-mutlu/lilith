@@ -1,7 +1,7 @@
 // Araya-gir semantiği — müdahale türlerinin modele sunuluş biçimi.
 // Tasarım: tasarim_notlari.md "araya-gir = menteşe" (interaktif plausibility).
 // Tüm fonksiyonlar saf — vitest ile doğrulanır.
-import type { InterventionMode, Speaker } from '../src/types'
+import type { InterventionMode, Speaker } from '../shared/types'
 
 export type HistMsg = {
   sender: Speaker
