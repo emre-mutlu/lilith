@@ -1,4 +1,6 @@
 export type Speaker = 'lilith' | 'generic' | 'user'
+/** Sunucu TTS konuşmacısı — kullanıcı hariç karakterler. */
+export type TtsSpeaker = Exclude<Speaker, 'user'>
 export type SessionState = 'inactive' | 'running' | 'paused'
 export type SpeakerState = 'idle' | 'generating' | 'speaking'
 export type VoiceEngine = 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
