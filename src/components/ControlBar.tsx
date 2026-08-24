@@ -1,4 +1,4 @@
-import type { SessionState } from '../types'
+import type { SessionState, InterventionMode } from '../types'
 
 // Inline SVG icons (no external dependency needed)
 function IconPlay() {
@@ -35,13 +35,26 @@ interface Props {
   placeholder: string
   disabled: boolean
   error: string
+  /** Araya-gir türü — her biri karakterlerce farklı algılanır */
+  intMode: InterventionMode
+  setIntMode: (m: InterventionMode) => void
+  fisTarget: 'lilith' | 'generic'
+  setFisTarget: (t: 'lilith' | 'generic') => void
 }
+
+const MODES: Array<{ id: InterventionMode; label: string; color: string }> = [
+  { id: 'soz', label: 'SÖZ', color: '#A855F7' },
+  { id: 'sahne', label: 'SAHNE', color: '#2DD4BF' },
+  { id: 'fisilti', label: 'FISILTI', color: '#818CF8' },
+  { id: 'yon', label: 'YÖN', color: '#9CA3AF' },
+]
 
 export default function ControlBar({
   sessionState, muted,
   onStart, onReset, onMute,
   userInput, setUserInput, onSubmit,
   placeholder, disabled, error,
+  intMode, setIntMode, fisTarget, setFisTarget,
 }: Props) {
   const running = sessionState === 'running'
 
@@ -107,7 +120,58 @@ export default function ControlBar({
       )}
 
       {/* Intervention form */}
-      <form onSubmit={onSubmit} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 560, marginLeft: 'auto' }}>
+      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, maxWidth: 560, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          {MODES.map(m => {
+            const active = intMode === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                title={
+                  m.id === 'soz' ? 'Sahne dışından seslen — duyarlar, serbestçe dokurlar'
+                  : m.id === 'sahne' ? 'Dünyaya ekleme/değişiklik — kalıcı sahne durumu'
+                  : m.id === 'fisilti' ? 'Tek karakterin zihnine telkin — diğeri bilmez'
+                  : 'Görünmez yönetmen notu — replik değil, performans yönetimi'
+                }
+                onClick={() => setIntMode(m.id)}
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 9, letterSpacing: '0.14em',
+                  padding: '3px 9px', borderRadius: 2, cursor: 'pointer',
+                  border: `1px solid ${active ? m.color : 'rgba(255,255,255,0.14)'}`,
+                  color: active ? m.color : 'rgba(255,255,255,0.45)',
+                  background: active ? `${m.color}1A` : 'transparent',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {m.label}
+              </button>
+            )
+          })}
+          {intMode === 'fisilti' && (
+            <span style={{ display: 'inline-flex', gap: 4, marginLeft: 6 }}>
+              {(['lilith', 'generic'] as const).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFisTarget(t)}
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 9, letterSpacing: '0.10em',
+                    padding: '3px 8px', borderRadius: 2, cursor: 'pointer',
+                    border: `1px solid ${fisTarget === t ? (t === 'lilith' ? '#D4AF37' : '#D0D0D0') : 'rgba(255,255,255,0.14)'}`,
+                    color: fisTarget === t ? (t === 'lilith' ? '#D4AF37' : '#E0E0E0') : 'rgba(255,255,255,0.40)',
+                    background: fisTarget === t ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  }}
+                >
+                  → {t === 'lilith' ? 'LİLİTH' : 'VARLIK'}
+                </button>
+              ))}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input
           type="text"
           value={userInput}
@@ -144,6 +208,7 @@ export default function ControlBar({
           <IconSend />
           <span>Araya Gir</span>
         </button>
+        </div>
       </form>
     </div>
   )

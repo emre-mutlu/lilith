@@ -13,6 +13,10 @@ import {
 } from './director.js'
 import { dramatizeForTts, intensityToExaggeration } from './ttsText.js'
 import { prepareFishText } from './fishText.js'
+import {
+  sozFrame, fisiltiFrame, isVisibleTo, isPinnableFor,
+  stageStateBlock, directorNotesBlock,
+} from './intervention.js'
 import { GoogleGenAI } from '@google/genai'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 
@@ -144,6 +148,8 @@ interface Message {
   timestamp: string
   mood?: string
   intensity?: 'low' | 'mid' | 'high'
+  mode?: import('./intervention.js').HistMsg['mode']
+  target?: import('./intervention.js').HistMsg['target']
 }
 
 type Intensity = NonNullable<Message['intensity']>
@@ -206,22 +212,32 @@ const BEAT_SCHEMA = {
   required: ['text', 'mood', 'intensity'],
 } as const
 
-/** Rol-dürüst geçmiş: karakterin kendi replikleri model rolünde. */
+/** Rol-dürüst geçmiş: karakterin kendi replikleri model rolünde.
+ *  Araya-gir semantiği: sahne/yön diyalogda görünmez; fısıltı yalnız hedefinde,
+ *  çerçeveli; söz karşı tarafa "sahne dışı ses" çerçevesiyle gider. */
 function roleContents(speaker: TtsSpeaker, history: Message[]): Array<{ role: string; parts: Array<{ text: string }> }> {
-  const recent = history.slice(-HISTORY_WINDOW)
-  const contents = recent.map(m => ({
-    role: m.sender === speaker ? 'model' : 'user',
-    parts: [{ text: m.text }],
-  }))
+  const visible = history.filter(m => isVisibleTo(speaker, m))
+  const recent = visible.slice(-HISTORY_WINDOW)
+  const contents = recent.map(m => {
+    const isSelf = m.sender === speaker
+    let text = m.text
+    if (!isSelf && m.mode === 'soz') text = sozFrame(m.text)
+    else if (!isSelf && m.mode === 'fisilti') text = fisiltiFrame(m.text)
+    return { role: isSelf ? 'model' : 'user', parts: [{ text }] }
+  })
   if (!contents.length || contents[0].role !== 'user') {
     contents.unshift({ role: 'user', parts: [{ text: '(karşılaşma başlar)' }] })
   }
   return contents
 }
 
-/** Pin-bellek: high-intensity dönüm noktaları pencereden bağımsız hatırlanır. */
-function pinMemoryBlock(history: Message[]): string {
-  const pins = history.filter(m => m.intensity === 'high').slice(-6)
+/** Pin-bellek: high-intensity dönüm noktaları pencereden bağımsız hatırlanır.
+ *  Kişi-duyarlı: başkasına söylenmiş fısıltı asla sızmaz. */
+function pinMemoryBlock(speaker: TtsSpeaker, history: Message[]): string {
+  const pins = history
+    .filter(m => m.intensity === 'high')
+    .filter(m => isPinnableFor(speaker, m))
+    .slice(-6)
   if (!pins.length) return ''
   return `\n[ÖNEMLİ ANLAR — oturumun dönüm noktaları, unutma]\n` +
     pins.map(m => `- ${m.sender === 'lilith' ? 'Lilith' : m.sender === 'generic' ? 'Varlık' : 'Moderatör'}: ${m.text.slice(0, 140)}`).join('\n')
@@ -236,11 +252,12 @@ async function generateText(
 
   let systemInstruction = SYSTEM_INSTRUCTIONS[speaker]
   if (scenario) {
-    systemInstruction += scenarioBlock(scenario) + pinMemoryBlock(history) +
+    systemInstruction += scenarioBlock(scenario) + pinMemoryBlock(speaker, history) +
       (speaker === 'lilith' ? lilithScenarioBlock(scenario) : varlikScenarioBlock(scenario))
   } else {
-    systemInstruction += pinMemoryBlock(history)
+    systemInstruction += pinMemoryBlock(speaker, history)
   }
+  systemInstruction += stageStateBlock(history) + directorNotesBlock(history)
 
   const response = await withRetry(() => ai.models.generateContent({
     model: GEMINI_MODEL,

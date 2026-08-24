@@ -2,6 +2,13 @@ export type Speaker = 'lilith' | 'generic' | 'user'
 export type SessionState = 'inactive' | 'running' | 'paused'
 export type SpeakerState = 'idle' | 'generating' | 'speaking'
 export type VoiceEngine = 'edge' | 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
+
+/** Araya-gir türü — her biri karakterler tarafından farklı algılanır:
+ *  soz    → sahne dışından bir ses (duyarlar, serbest dokuma ile tepki verirler)
+ *  sahne  → dünya olayı/durumu (kimse dışarıdan geldiğini bilmez, kalıcıdır)
+ *  fisilti→ yalnız hedefin zihnine dolan telkin (diğeri asla bilmez)
+ *  yon    → görünmez yönetmen notu (replik değil, sistem talimatına işler) */
+export type InterventionMode = 'soz' | 'sahne' | 'fisilti' | 'yon'
 export type SentimentIntensity = 'high' | 'mid' | 'low'
 
 export interface Message {
@@ -10,7 +17,11 @@ export interface Message {
   text: string
   timestamp: string
   mood?: string
-  intensity?: 'low' | 'mid' | 'high'
+  intensity?: SentimentIntensity
+  /** Yalnız sender='user' için — eski mesajlarda yoktur (düz söz gibi davranır) */
+  mode?: InterventionMode
+  /** Yalnız mode='fisilti' için — telkinin hedefi */
+  target?: Exclude<Speaker, 'user'>
 }
 
 /** Yönetmen prelüdü — her yeni oturumda bir kez üretilir, istemcide yaşar, UI'da gösterilmez. */

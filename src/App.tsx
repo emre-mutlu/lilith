@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude } from './types'
+import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude, InterventionMode } from './types'
 import { globalSentiment, hexToRgb, scoreMessage } from './lib/sentiment'
 import Header from './components/Header'
 import LilithPanel from './components/panels/LilithPanel'
@@ -138,6 +138,12 @@ export default function App() {
 
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('fish')
 
+  // Araya-gir modu — tür, algı ve zamanlamayı belirler (tasarim_notlari "menteşe")
+  const [intMode, setIntMode] = useState<InterventionMode>('soz')
+  const [fisTarget, setFisTarget] = useState<'lilith' | 'generic'>('lilith')
+  // Söz/fısıltı konuşan replik bitene kadar burada bekler; sahne/yön anında uygulanır
+  const queuedInterventionsRef = useRef<Message[]>([])
+
   // Yerel TTS (Chatterbox) ısınma durumu — /api/tts/status'tan beslenir
   const [localTts, setLocalTts] = useState<{ configured: boolean; ready: boolean; warming: boolean }>({
     configured: false, ready: false, warming: false,
@@ -208,8 +214,6 @@ export default function App() {
   const wordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null)
-  // Araya-gin sonrası ilk tur Edge ile anında seslensin (Gemini TTS ~7s bekletmesin)
-  const forceEdgeOnceRef = useRef(false)
 
   // Load browser voices
   useEffect(() => {
@@ -396,9 +400,8 @@ export default function App() {
 
   const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<{ text: string; mood?: string; intensity?: 'low' | 'mid' | 'high'; audio?: string | null; mimeType?: string | null }> => {
     const history = messagesRef.current
-    // Motor seçimi: mute -> ses üretme · araya-gin ilk turu -> Edge (anında ses) · aksi halde seçili motor
-    const engine = mutedRef.current ? 'browser' : forceEdgeOnceRef.current ? 'edge' : voiceEngineRef.current
-    forceEdgeOnceRef.current = false
+    // Motor seçimi: mute -> ses üretme (tarayıcı yok) · aksi halde seçili motor
+    const engine = mutedRef.current ? 'browser' : voiceEngineRef.current
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -484,6 +487,13 @@ export default function App() {
       setSpeakerState('idle'); setActiveSpeaker(null); return
     }
 
+    // Replik bitti — bekleyen söz/fısıltıları sahneye düşür (sonraki tur görür)
+    if (queuedInterventionsRef.current.length) {
+      messagesRef.current = [...messagesRef.current, ...queuedInterventionsRef.current]
+      setMessages(messagesRef.current)
+      queuedInterventionsRef.current = []
+    }
+
     setSpeakerState('idle')
     setActiveSpeaker(null)
     const nextResult = await prefetchPromise
@@ -534,6 +544,7 @@ export default function App() {
   const handleReset = () => {
     cancelTokenRef.current++
     stopAllAudio()
+    queuedInterventionsRef.current = []
     setMessages([])
     setSessionState('inactive')
     setActiveSpeaker(null)
@@ -560,28 +571,23 @@ export default function App() {
     if (!text) return
     setUserInput('')
 
-    cancelTokenRef.current++
-    stopAllAudio()
-
-    const msg: Message = { id: makeId(), sender: 'user', text, timestamp: nowStamp() }
-    const prevMessages = messagesRef.current
-    // Ref'i senkron güncelle — runTurn/prefetch doğru geçmişi okusun (runTurn'deki desenle aynı)
-    messagesRef.current = [...prevMessages, msg]
-    setMessages(messagesRef.current)
-
-    let lastSpeaker: 'lilith' | 'generic' | null = null
-    for (let i = prevMessages.length - 1; i >= 0; i--) {
-      if (prevMessages[i].sender !== 'user') {
-        lastSpeaker = prevMessages[i].sender as 'lilith' | 'generic'
-        break
-      }
+    const msg: Message = {
+      id: makeId(), sender: 'user', text, timestamp: nowStamp(),
+      mode: intMode,
+      target: intMode === 'fisilti' ? fisTarget : undefined,
     }
-    const next: 'lilith' | 'generic' = lastSpeaker === 'lilith' ? 'generic' : 'lilith'
 
-    forceEdgeOnceRef.current = true
-    setSessionState('running')
-    const token = ++cancelTokenRef.current
-    setTimeout(() => runTurnRef.current?.(next, token), 100)
+    // Sahne/yön konuşmayı zaten bozmaz → anında uygula.
+    // Söz/fısıltı: replik ortasında geldiyse kuyruğa girer (replik sonunda düşer);
+    // boşta/pozada ise doğrudan sahneye yazılır. HİÇBİR DURUMDA ses kesilmez.
+    if (intMode === 'sahne' || intMode === 'yon' || sessionStateRef.current !== 'running') {
+      messagesRef.current = [...messagesRef.current, msg]
+      setMessages(messagesRef.current)
+      // Boşta kaldıysa ve oturum çalışıyor değilse: döngü zaten duruyor, mesaj
+      // bir sonraki Başlat/Devam'da doğal olarak geçmişe dahil olur.
+    } else {
+      queuedInterventionsRef.current.push(msg)
+    }
   }
 
   const handleCopy = async () => {
@@ -619,10 +625,14 @@ export default function App() {
     inputPlaceholder = 'Simülasyon başlatıldığında müdahale edebilirsin.'
   else if (sessionState === 'paused')
     inputPlaceholder = 'Duraklatıldı. Yeni bir cümle yaz...'
-  else if (activeSpeaker === 'lilith')
-    inputPlaceholder = 'Lilith konuşuyor — kesintiyi yaz...'
-  else if (activeSpeaker === 'generic')
-    inputPlaceholder = 'Varlık konuşuyor — kesintiyi yaz...'
+  else if (intMode === 'soz')
+    inputPlaceholder = 'Karakterlere seslen... ("Lilith, ona yalan söyleme!")'
+  else if (intMode === 'sahne')
+    inputPlaceholder = 'Sahneye bir şey ekle/değiştir... ("uzakta bir çan çalar")'
+  else if (intMode === 'fisilti')
+    inputPlaceholder = `Fısılda → ${fisTarget === 'lilith' ? 'Lilith' : 'Varlık'}'in zihnine...`
+  else if (intMode === 'yon')
+    inputPlaceholder = 'Yönetmen notu — kimse duymaz... ("tempoyu düşür")'
 
   const inputDisabled = sessionState === 'inactive' && messages.length === 0
   const showLeft = tab !== 'varlik'
@@ -791,6 +801,10 @@ export default function App() {
         placeholder={inputPlaceholder}
         disabled={inputDisabled}
         error={error}
+        intMode={intMode}
+        setIntMode={setIntMode}
+        fisTarget={fisTarget}
+        setFisTarget={setFisTarget}
       />
 
       {/* Responsive styles injected globally */}

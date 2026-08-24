@@ -79,8 +79,18 @@ export default function TranscriptStream({ messages, currentWord, onCopy, onDown
 function MessageRow({ msg, isLast, currentWord }: { msg: Message; isLast: boolean; currentWord: string }) {
   const isLilith = msg.sender === 'lilith'
   const isUser = msg.sender === 'user'
-  const borderColor = isLilith ? '#D4AF37' : isUser ? '#A855F7' : 'rgba(255,255,255,0.20)'
-  const textColor = isLilith ? '#D4AF37' : isUser ? '#C084FC' : 'rgba(255,255,255,0.55)'
+
+  // Araya-gir türleri — her biri kendi kimlik rengiyle
+  const MODE_META: Record<string, { label: string; color: string }> = {
+    soz: { label: 'SÖZ', color: '#A855F7' },
+    sahne: { label: 'SAHNE', color: '#2DD4BF' },
+    fisilti: { label: `FISILTI→${msg.target === 'lilith' ? 'LİLİTH' : 'VARLIK'}`, color: '#818CF8' },
+    yon: { label: 'YÖN', color: '#9CA3AF' },
+  }
+  const modeMeta = isUser && msg.mode ? MODE_META[msg.mode] : undefined
+
+  const borderColor = isLilith ? '#D4AF37' : modeMeta ? modeMeta.color : isUser ? '#A855F7' : 'rgba(255,255,255,0.20)'
+  const textColor = isLilith ? '#D4AF37' : modeMeta ? modeMeta.color : isUser ? '#C084FC' : 'rgba(255,255,255,0.55)'
   const s = scoreMessage(msg)
   const high = s.intensity === 'high'
 
@@ -131,7 +141,9 @@ function MessageRow({ msg, isLast, currentWord }: { msg: Message; isLast: boolea
         color: 'rgba(255,255,255,0.40)', lineHeight: 1.55, paddingTop: 1,
       }}>
         {msg.timestamp}<br />
-        <span style={{ color: 'rgba(255,255,255,0.55)' }}>{LABELS[msg.sender]}</span>
+        <span style={{ color: modeMeta ? modeMeta.color : 'rgba(255,255,255,0.55)' }}>
+          {modeMeta ? modeMeta.label : LABELS[msg.sender]}
+        </span>
       </div>
       {textNode}
       <div style={{ paddingTop: 2 }}>
