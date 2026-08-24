@@ -9,8 +9,9 @@ import {
   directorInstruction, scenarioBlock, lilithScenarioBlock, varlikScenarioBlock,
   validatePrelude, LILITH_EGILIMLERI, OTURUM_YAYLARI, GERILIM_OZLERI,
   TUR_DOKU, TEMPO, DUYGU_RENGI, VARLIK_EGRILERI,
-  type ScenarioPrelude,
 } from './director.js'
+import type { ScenarioPrelude } from './director.js'
+import type { Message } from '../shared/types'
 import { dramatizeForTts, intensityToExaggeration } from './ttsText.js'
 import { prepareFishText } from './fishText.js'
 import {
@@ -127,17 +128,6 @@ async function generateGeminiTts(
     console.error('Gemini TTS error:', err instanceof Error ? err.message : err)
     return null
   }
-}
-
-interface Message {
-  id: string
-  sender: 'lilith' | 'generic' | 'user'
-  text: string
-  timestamp: string
-  mood?: string
-  intensity?: 'low' | 'mid' | 'high'
-  mode?: import('./intervention.js').HistMsg['mode']
-  target?: import('./intervention.js').HistMsg['target']
 }
 
 type Intensity = NonNullable<Message['intensity']>

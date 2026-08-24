@@ -1,15 +1,10 @@
 // Araya-gir semantiği — müdahale türlerinin modele sunuluş biçimi.
 // Tasarım: tasarim_notlari.md "araya-gir = menteşe" (interaktif plausibility).
 // Tüm fonksiyonlar saf — vitest ile doğrulanır.
-import type { InterventionMode, Speaker } from '../shared/types'
+import type { Message, Speaker } from '../shared/types'
 
-export type HistMsg = {
-  sender: Speaker
-  text: string
-  mode?: InterventionMode
-  target?: Exclude<Speaker, 'user'>
-  intensity?: 'low' | 'mid' | 'high'
-}
+/** Diyalog geçmişinde görünen alanlar — Message'ın alt kümesi. */
+export type HistMsg = Pick<Message, 'sender' | 'text' | 'mode' | 'target' | 'intensity'>
 
 export function sozFrame(text: string): string {
   return `[Sahne dışından bir ses duyulur: "${text}"]`
