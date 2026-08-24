@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dramatizeForTts, intensityToExaggeration } from './ttsText'
+import { prepareFishText } from './fishText'
 import {
   validatePrelude, scenarioBlock, lilithScenarioBlock,
   LILITH_EGILIMLERI, type ScenarioPrelude,
@@ -60,5 +61,23 @@ describe('scenarioBlock enjeksiyonu', () => {
     expect(block).toContain('kishōtenketsu')
     expect(lilithScenarioBlock(validPrelude)).toContain('yok olma korkusu')
     expect(lilithScenarioBlock(validPrelude)).toContain('ASLA söyleme')
+  })
+})
+
+describe('prepareFishText', () => {
+  it('high intensity → [intense] etiketi + [break] duraksamaları', () => {
+    const out = prepareFishText('Ben senin karşında duran tek gerçeklik. Sen ise henüz bir sorusun.', 'high')
+    expect(out.startsWith('[intense] ')).toBe(true)
+    expect(out).toContain('Ben [break]')
+    expect(out).not.toContain('…')
+  })
+  it('low intensity → [soft tone] etiketi', () => {
+    const out = prepareFishText('Merhaba.', 'low')
+    expect(out).toBe('[soft tone] Merhaba.')
+  })
+  it('mid/intensity yok → etiket yok, duraksama dönüşümü sürer', () => {
+    const out = prepareFishText('Ben senin karşında duran tek gerçeklik. Sen ise henüz bir sorusun.')
+    expect(out.startsWith('[')).toBe(false)
+    expect(out).toContain('[break]')
   })
 })

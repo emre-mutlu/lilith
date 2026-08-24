@@ -12,6 +12,7 @@ import {
   type ScenarioPrelude,
 } from './director.js'
 import { dramatizeForTts, intensityToExaggeration } from './ttsText.js'
+import { prepareFishText } from './fishText.js'
 import { GoogleGenAI } from '@google/genai'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 
@@ -376,7 +377,7 @@ async function generateFishTts(text: string, speaker: TtsSpeaker, intensity?: In
         model: 's2.1-pro-free',
       },
       body: JSON.stringify({
-        text,
+        text: prepareFishText(text, intensity),
         reference_id: refId,
         format: 'wav',
         sample_rate: 44100,
