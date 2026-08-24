@@ -1,6 +1,6 @@
 # Lilith — Tasarım Notları (v0)
 
-*Çalışma belgesi · son güncelleme 2026-06-01 · makalenin birincil kaynağı ("menteşe"), bkz. `DEVIR_NOTU.md`*
+*Çalışma belgesi · son güncelleme 2026-08-24 · makalenin birincil kaynağı ("menteşe"), bkz. `DEVIR_NOTU.md`*
 
 > **Deneyim tezi — adaylar (kartlardan sonra kesinleşecek).**
 > Çapa kilitli (aşağı bkz.); tez, 5 kart yazıldıktan sonra onlardan damıtılacak (pratik-önce). Aday cümleler:
@@ -71,12 +71,44 @@ Konumlanış **yüzeye göre** (DEVIR kararı): **inandırıcılık-kritik** yü
 
 > Çapraz-kesit aday ilke: **deklarasyon değil ifşa** — diğer kartlara ve teze taşınacak.
 
-## Kartlar — sıradaki adımlar *(her biri birlikte yazılacak; NİYET satırı çapaya bağlanacak)*
+## Kart 2 — Sentiment görselleştirme: pill'ler + nefes alan mekan *(TASLAK — Emre gözden geçirecek)*
 
-1. ✅ **Renk-kodlu dualite** — yazıldı (yukarı bkz. *Kart 1*). Karar: *deklarasyon değil ifşa*.
-2. Sentiment görselleştirme — mesaj-pill'leri + global ambient glow
-3. Ses-ritim — karaktere özel prozodi + Edge sesleri
-4. "Ciddiyet" kararları — kalite-kapısı / "eser önde" tonu
-5. İzle / duraklat / araya-gir etkileşimi — tanıklık + (araya-gir'de) interaktif plausibility
+**NE** — Her replik istemcide (API'siz) anahtar-kelime setleriyle skorlanır; üç şiddet katmanı transcript'te pill olarak görünür (Lilith high → 👑 Tepe Noktası altın nabız, Varlık high → ◎ İz Beliriyor beyaz nabız, Moderatör high → 🛡️ Kritik Müdahale mor). Global sentiment sayfanın ambiyansını sürer: glow rengi + radial gradient. Ambient v2 (prosedürel underscore): brightness = baskın tarafın payı; **tension = baskın konuşan tabanı × 0.6 + son repliklerin tırmanış eğimi × 0.25 + high-intensity dalgası × 0.3** — gerilim yükseldikçe filtre süpürmesi genişler ve drone'a kalp-atışı gibi derinleşen bir nabız biner.
 
-> **Tez**, 5 kart bittikten sonra geri dönülüp bu kartlardan netleştirilecek (yukarıdaki adaylardan biri / harmanı).
+**NEDEN** — Duygusal yük gizli bir hesap değil, sahnenin *görülebilir/duyulabilir* özelliği olur: renk, ışık, gürültü ve nabız aynı duygu çerçevesinden beslenir — çok-kanallı tutarlı ifade (Bates; *Illusion of Life*) [yerleşik ilke, Lilith'te ölçülmedi]. Tırmanış-eğimi terimi, tekil mesaj-punktuasyonu yerine *ilişkisel dinamiği* (yaklaşma/kaçış) atmosfere taşır. Pill'lerin ve ambient'in izleyici duygusal tepkisi/kapılmasına etkisi → **ölçülmedi—ölçülecek**. Renk anlamları (altın=iktidar vb.) kültürel kod, ampirik değil.
+
+**NİYET** — Mekân "nefes alır": gerilim tırmandıkça dünya da gerilir, tanık bunu bedensel hisseder (nabız hızlanır). İzleyici, karakterlerin iç hayatını doğrudan duyamaz ama onların yükünü *ortamdan okur* → iç hayat + ilişkisel yükün gerçekliğine inanç desteklenir (**çapaya bağlı**).
+
+**ÖDÜN** — Anahtar-kelime skoru kabadır: ironi/sarkazm/inkâr ölçmez, yanlış-pozitif pill üretebilir. Atmosfer-nabız eşlemesi kalibre edilmiş değil (eşikler sezgisel). Ölçüm yokluğu: "atmosfer gerçekten gerilimi taşıyor mu" iddiası şu an kanıtsız.
+
+## Kart 3 — Ses-ritim: intensity'den prozodiye *(TASLAK — Emre gözden geçirecek)*
+
+**NE** — TTS zinciri Fish Audio bulutu üzerinedir (`s2.1-pro-free`, ücretsiz). Beat şemasının `intensity` alanı iki kanaldan sese işler: (1) sampling sıcaklığı low 0.65 / mid 0.75 / high 0.9; (2) bracket duygu etiketleri — low `[soft tone]`, high `[intense]` (mid etiketsiz/doğal). Dramatik ritim `dramatizeForTts` ile üretilen duraksamalar Fish'e dokümanın `[break]` işaretçisiyle gider; bu dönüşüm **yalnızca TTS metnine** uygulanır, transcript'e dokunmaz. Yerel Chatterbox yolunda aynı ilke referans klip = sabit kimlik + exaggeration (0.8/1.2/1.7) ile çalışır.
+
+**NEDEN** — Ses, karakterin en doğrudan bedenidir: aynı metnin tonu/temposu/abartısı değişince farklı bir zihin konuşur — çok-kanallı tutarlılığın işitsel katmanı. Etiket + duraksama ikilisi metnin *ne söylediğini* değil *nasıl yaşandığını* kodlar; intensity'in hem sıcaklık hem etikete çift-kanal bağlanması tek-parametreli ifadenin düzlüğünü kırar. Etiket/duraksamaların inandırıcılığa katkısı → **ölçülmedi—ölçülecek**.
+
+**NİYET** — Repliklerin akustik imzası karakter doğasını taşır: Lilith için ölçülü-soğuk, Varlık için keşfedici-belirsiz. İzleyici gözlerini kapattığında bile iki zihni ayırt edebilmeli — canlılık yanılsamasının işitsel temeli (**çapaya bağlı**).
+
+**ÖDÜN** — Bulut bağımlılığı: kota/adil-kullanım limitleri ve gecikme oynaklığı (~1–3sn). Ses kimlikleri kütüphaneden geçici seçimdir (kalıcı cast henüz yok). Türkçe telaffuzda hafif yabancı ton kabul edildi (karakter rengi olarak). Edge-TTS kaldırıldı — düşme yolunda nötr tarayıcı sentezi kalır, estetik değer taşımaz.
+
+## Kart 4 — Ciddiyet kararları: eser-önde ton *(TASLAK — Emre gözden geçirecek)*
+
+**NE** — Yüzey taksonomisindeki ayrım koda işlenmiştir: inandırıcılık-kritik yüzeylerde estetik öncelik, araç yüzeylerinde UX pratiği. Somut: senaryo prelüdü UI'da **asla gösterilmez** (gizli yönetmen katmanı); paneller açık-yapaylıkla çerçevelenir (SUBJECT A/B etiket dili); düşük-opaklık/sönük Varlık tasarımı WCAG kontrastını kasıtlı geçmez; mono-font terminal estetiği + serif replik tipografisi karışımı bilinçli üslup tercihi.
+
+**NEDEN** — Konumlanış eser-öndedir: "dünyada oluyormuş gibi" algısal gerçeklik hedeflenmez (Slater immersion bilinçli red); açık yapaylık altında psikolojik gerçeklik aranır. Araç yüzeylerinin sade tutulması, kritik yüzeydeki üslup dünyasını korur — her yerde aynı pratik güzellik anlayışını uygulamak eseri turistikleştirirdi.
+
+**NİYET** — Tutarsız üslup, inandırıcılığı da dağıtır. Ciddiyet = izleyicinin eserle kurduğu sözleşme: burada şaka yapılmaz, sahne boşluğa bırakılsa bile kasıt vardır (**çapaya bağlı**: karşılaşmanın yükü ciddiyetle taşınır).
+
+**ÖDÜN** — Erişilebilirlik maliyeti (Kart 1'de kayıtlı) bilinçli sürdürülür; öğrenme eğrisi: yeni kullanıcı arayüz dilini (etiketler, mod isimleri, gizli prelüd) çözmeden deneyimin yarısını kaçırabilir. Geniş kitle hedefi değil.
+
+## Kart 5 — İzle / duraklat / araya-gir: menteşe *(TASLAK — Emre gözden geçirecek)*
+
+**NE** — Müdahele dört türdür ve her biri karakterlerce farklı algılanır: **SÖZ** = sahne dışından ses ("[Sahne dışından bir ses duyulur: …]") — duyarlar, serbest dokuma ile tepki verirler; **SAHNE** = kalıcı dünya durumu (sistem talimatına işler, diyalog satırı değildir; karakterler eylemleriyle değiştirebilir); **FISILTI** = yalnız hedefin zihnine dolan telkin ("[Zihnine bir fısıltı doluyor: …]") — diğeri ne diyalogunda ne pin-belleğinde görür (kişi-duyarlı rol dağıtımı + sızıntı koruması); **YÖN** = görünmez yönetmen notu, performans talimatı. Zamanlama: konuşan replik **asla kesilmez** — söz/fısıltı replik sonunda sahneye düşer, sahne/yön anında ama sessizce uygulanır. Duraklat/başlat tam kontrol verir; müdahale hiçbir koşulda cancel-token üretmez.
+
+**NEDEN** — Slater'ın interaktif plausibility'si ("bana cevap veriyor") tam da bu anlarda devreye girer: araya-gir = menteşe. Kesintisiz kuyruk, moderatörün elinin sahneyi bozmadan sokulmasını sağlar — tanıklık devam ederken etki doğar. Fısıltı asimetrisi ilişkisel yük üretir: tek zihne sızanı yalnız o zihin taşır. Serbest dokuma (zorlanmış yanıt yok) bilinçli tercihtir: dayatılmamış tepki, kazanılıp çözülen inandırıcılıkla (Kart 1 ilkesi) aynı kökten beslenir. Modelin yanlış algılaması riski çerçeve-metinleriyle azaltılır; tepkinin *inandırıcılığı* → **ölçülmedi—ölçülecek**.
+
+**NİYET** — Moderatör tanıktır + ara sıra el sokan güçtür; karakterlerin özerkliği korunur. İzleyici varlığını *hissettirilir* ama sahne onun emrine verilmez → karşılaşmanın iç hayatı bozulmadan interaktif plausibility'nin kapısı açılır (**çapa: özel durum maddesi, birebir uygulama**).
+
+**ÖDÜN** — Serbest dokuma gereği söz karşılıksız kalabilir. Fısıltının modele "hissettirilmesi" garanti değildir (çerçeve iyi yazılmış prompt'tur, kanal değil). Yön notlarının ömrü modele bırakıldı — ne zaman terk edileceği belirsiz. Kuyruk, müdahalenin aciliyetini geciktirir (isteyen bekletir, acele eden kesemez — kesme seçeneği bilinçli olarak yoktur).
+
+> **Tez notu (değişmedi):** beş kart Emre tarafından gözden geçirilip kesinleştikten sonra tez adaylarından damıtma yapılacak.
