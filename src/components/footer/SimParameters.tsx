@@ -9,9 +9,16 @@ export interface Telemetry {
   servedBy: string | null
 }
 
+export interface LocalTtsStatus {
+  configured: boolean
+  ready: boolean
+  warming: boolean
+}
+
 interface Props {
   voiceEngine: VoiceEngine
   setVoiceEngine: (v: VoiceEngine) => void
+  localTts: LocalTtsStatus
   rate: number
   setRate: (v: number) => void
   pitch: number
@@ -20,6 +27,7 @@ interface Props {
 }
 
 const ENGINE_LABELS: Record<VoiceEngine, string> = {
+  fish: 'Fish Audio',
   local: 'Chatterbox (yerel)',
   azure: 'Azure Neural',
   edge: 'Edge Neural',
@@ -27,8 +35,11 @@ const ENGINE_LABELS: Record<VoiceEngine, string> = {
   browser: 'Tarayıcı',
 }
 
-export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRate, pitch, setPitch, telemetry }: Props) {
+export default function SimParameters({ voiceEngine, setVoiceEngine, localTts, rate, setRate, pitch, setPitch, telemetry }: Props) {
   const isServerAudio = voiceEngine !== 'browser'
+  const showLocalStatus = voiceEngine === 'local' && (localTts.configured || localTts.warming)
+  const localStatusLabel = localTts.ready ? 'hazır' : localTts.warming ? 'ısınıyor…' : 'beklemede'
+  const localStatusColor = localTts.ready ? '#10B981' : localTts.warming ? '#D4AF37' : 'rgba(255,255,255,0.35)'
 
   return (
     <div style={{
@@ -56,6 +67,7 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
             padding: '2px 6px', borderRadius: 2, outline: 'none',
           }}
         >
+          <option value="fish" style={{ background: '#0A0A0A' }}>Fish Audio</option>
           <option value="local" style={{ background: '#0A0A0A' }}>Chatterbox (yerel)</option>
           <option value="azure" style={{ background: '#0A0A0A' }}>Azure Neural</option>
           <option value="edge" style={{ background: '#0A0A0A' }}>Edge Neural</option>
@@ -63,6 +75,17 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, rate, setRa
           <option value="browser" style={{ background: '#0A0A0A' }}>Tarayıcı</option>
         </select>
       </StatRow>
+
+      {showLocalStatus && (
+        <StatRow label="Chatterbox">
+          <span style={{
+            color: localStatusColor,
+            animation: localTts.warming ? 'softpulse 1.6s ease-in-out infinite' : undefined,
+          }}>
+            ● {localStatusLabel}
+          </span>
+        </StatRow>
+      )}
 
       <StatRow label="Son Tur">
         <span style={{ color: 'rgba(255,255,255,0.55)' }}>

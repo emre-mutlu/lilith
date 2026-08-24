@@ -292,8 +292,10 @@ async function generateEdgeTts(text: string, speaker: 'lilith' | 'generic'): Pro
 }
 
 // ── Azure Speech TTS (F0 bedava katman) ──────────────────────────────────────
+// ⚠ PARK HALİNDE (Emre kararı, 08-24): Azure kullanılmıyor — AZURE_SPEECH_KEY
+// ayarsız kaldığı sürece bu katman her turda sessizce atlanır (merdiven Edge'e
+// düşer). Kod, ileride ihtiyaç olursa diye burada; maliyeti/kapasitesi yok.
 // 500K neural karakter/ay · 20 istek/dk · multilingual sesler tr-TR konuşur.
-// Key yoksa bu katman sessizce atlanır (merdiven Edge'e düşer).
 const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY ?? ''
 const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION ?? 'westeurope'
 // Sesler env ile değiştirilebilir — dinleme/karar sonrası koda dokunmadan oynanabilir.
@@ -346,6 +348,56 @@ async function generateAzureTts(text: string, speaker: TtsSpeaker, override?: { 
   }
 }
 
+// ── Fish Audio TTS (bulut · s2.1-pro-free) ───────────────────────────────────
+// Kütüphane sesleri reference_id ile kullanılır (kendi klon modellerimiz de olur).
+// Key Operator kasasında: `operator secret run lilith -- npm run dev`
+const FISH_API_KEY = process.env.FISH_AUDIO_KEY ?? ''
+// low/balanced/normal — normal en kararlı; interaktif için balanced denenebilir
+const FISH_LATENCY = (process.env.FISH_LATENCY ?? 'normal') as 'low' | 'balanced' | 'normal'
+const FISH_MODEL_ID: Partial<Record<TtsSpeaker, string>> = {
+  lilith: process.env.FISH_MODEL_LILITH || undefined,
+  generic: process.env.FISH_MODEL_GENERIC || undefined,
+}
+
+/** Beat intensity → sampling sıcaklığı: abartı karşılığı */
+function fishTemperature(intensity?: Intensity): number {
+  return intensity === 'high' ? 0.9 : intensity === 'low' ? 0.65 : 0.75
+}
+
+async function generateFishTts(text: string, speaker: TtsSpeaker, intensity?: Intensity): Promise<{ audio: string; mimeType: string } | null> {
+  const refId = FISH_MODEL_ID[speaker]
+  if (!FISH_API_KEY || !refId) return null
+  try {
+    const res = await fetch('https://api.fish.audio/v1/tts', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${FISH_API_KEY}`,
+        'Content-Type': 'application/json',
+        model: 's2.1-pro-free',
+      },
+      body: JSON.stringify({
+        text,
+        reference_id: refId,
+        format: 'wav',
+        sample_rate: 44100,
+        latency: FISH_LATENCY,
+        temperature: fishTemperature(intensity),
+      }),
+      signal: AbortSignal.timeout(30_000),
+    })
+    if (!res.ok) {
+      console.error(`Fish TTS error: ${res.status} ${(await res.text().catch(() => '')).slice(0, 150)}`)
+      return null
+    }
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length === 0) return null
+    return { audio: buf.toString('base64'), mimeType: 'audio/wav' }
+  } catch (err) {
+    console.error('Fish TTS error:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
 // ── Chatterbox yerel TTS (M4 Pro resident servis) ────────────────────────────
 // CHATTERBOX_PYTHON ayarlıysa localhost:8777'deki Python servisi kullanılır;
 // ayarsızsa bu katman sessizce atlanır (merdiven Edge'e düşer).
@@ -364,32 +416,49 @@ const LOCAL_TTS_URL = 'http://127.0.0.1:8777'
 
 let localProc: ChildProcess | null = null
 let localAvailableUntil = 0 // sağlık-cache (30sn TTL) — her turda health-check spam olmasın
+let localWarming = false // spawn sonrası model yükleniyor (UI "ısınıyor" göstergesi)
+
+async function healthCheck(): Promise<boolean> {
+  try {
+    const r = await fetch(`${LOCAL_TTS_URL}/health`, { signal: AbortSignal.timeout(800) })
+    return r.ok
+  } catch { return false }
+}
 
 async function ensureLocalService(): Promise<boolean> {
   if (Date.now() < localAvailableUntil) return true
-  // Harici/resident servis modu: port ayakta ise CHATTERBOX_PYTHON gerekmez
-  try {
-    const r = await fetch(`${LOCAL_TTS_URL}/health`, { signal: AbortSignal.timeout(800) })
-    if (r.ok) { localAvailableUntil = Date.now() + 30_000; return true }
-  } catch { /* yoksa ve CHATTERBOX_PYTHON varsa spawn deneriz */ }
+  if (await healthCheck()) { localAvailableUntil = Date.now() + 30_000; return true }
   if (!CHATTERBOX_PYTHON) return false
   if (!localProc) {
     console.log('[local-tts] servis başlatılıyor...')
+    localWarming = true
     localProc = spawn(CHATTERBOX_PYTHON, [path.join(__dirname, 'chatterbox_service.py')], {
       stdio: ['ignore', 'inherit', 'inherit'],
     })
-    localProc.on('exit', () => { localProc = null; localAvailableUntil = 0 })
+    localProc.on('exit', () => { localProc = null; localAvailableUntil = 0; localWarming = false })
   }
   // model yükleme ~10sn — en fazla 60sn bekle
-  for (let i = 0; i < 120; i++) {
-    await new Promise(r => setTimeout(r, 500))
-    try {
-      const r = await fetch(`${LOCAL_TTS_URL}/health`, { signal: AbortSignal.timeout(500) })
-      if (r.ok) { localAvailableUntil = Date.now() + 30_000; return true }
-    } catch { /* hâlâ inmiyor */ }
+  try {
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 500))
+      if (await healthCheck()) { localAvailableUntil = Date.now() + 30_000; return true }
+    }
+    return false
+  } finally {
+    localWarming = false
   }
-  return false
 }
+
+/** Express kapanınca Python çocuğunu da öldür — hayalet süreç / port işgali kalmasın. */
+function killLocalProc(): void {
+  if (!localProc) return
+  console.log('[local-tts] servis kapatılıyor...')
+  localProc.kill()
+  localProc = null
+}
+process.on('exit', killLocalProc)
+process.on('SIGINT', () => { killLocalProc(); process.exit(0) })
+process.on('SIGTERM', () => { killLocalProc(); process.exit(0) })
 
 // Kazanan reçete dramatizeForTts → server/ttsText.ts'e taşındı (test edilebilirlik)
 
@@ -472,7 +541,7 @@ async function main() {
     const { speaker, history = [], ttsEngine = 'edge', scenario, sessionId } = req.body as {
       speaker: TtsSpeaker
       history: Message[]
-      ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure' | 'local'
+      ttsEngine: 'edge' | 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
       scenario?: ScenarioPrelude
       sessionId?: string
     }
@@ -498,11 +567,16 @@ async function main() {
         return res.json({ text: beat.text, mood: beat.mood, intensity: beat.intensity, engine: 'browser', latencyMs: Date.now() - t0 })
       }
 
-      // Merdiven: gemini -> local -> azure -> edge -> null (istemci tarayıcı TTS'e düşer)
+      // Merdiven: fish -> local -> edge (gemini/azure eski seçenekler, key'siz atlanır)
       // Yerel motora beat-intensity kalibrasyonu geçer (0.8 / 1.2 / 1.7)
       let ttsResult: { audio: string; mimeType: string } | null = null
-      let servedBy: 'gemini' | 'local' | 'azure' | 'edge' | 'none' = 'none'
-      if (ttsEngine === 'gemini') {
+      let servedBy: 'fish' | 'gemini' | 'local' | 'azure' | 'edge' | 'none' = 'none'
+      if (ttsEngine === 'fish') {
+        ttsResult = await generateFishTts(beat.text, speaker, beat.intensity)
+        if (ttsResult) servedBy = 'fish'
+        else console.warn('Fish TTS düştü — local/edge fallback')
+      }
+      if (!ttsResult && ttsEngine === 'gemini') {
         ttsResult = await generateGeminiTts(beat.text, speaker)
         if (ttsResult) servedBy = 'gemini'
         else console.warn('Gemini TTS düştü — local/azure/edge fallback')
@@ -537,11 +611,18 @@ async function main() {
     }
   })
 
+  // Yerel TTS durum sorgusu — istemci "ses motoru ısınıyor" göstergesi için
+  app.get('/api/tts/status', async (_req, res) => {
+    let ready = Date.now() < localAvailableUntil || (await healthCheck())
+    if (ready) localAvailableUntil = Math.max(localAvailableUntil, Date.now() + 30_000)
+    res.json({ configured: Boolean(CHATTERBOX_PYTHON), ready, warming: !ready && localWarming })
+  })
+
   app.post('/api/tts', async (req, res) => {
     const { text, speaker, engine = 'edge', voice, style, exaggeration } = req.body as {
       text: string
       speaker: TtsSpeaker
-      engine?: 'edge' | 'gemini' | 'azure' | 'local'
+      engine?: 'edge' | 'gemini' | 'azure' | 'local' | 'fish'
       voice?: string
       style?: string
       exaggeration?: number
@@ -551,7 +632,9 @@ async function main() {
     }
 
     try {
-      const result = engine === 'gemini'
+      const result = engine === 'fish'
+        ? await generateFishTts(text, speaker)
+        : engine === 'gemini'
         ? await generateGeminiTts(text, speaker, { voice, style })
         : engine === 'azure'
           ? await generateAzureTts(text, speaker, { voice, style })
@@ -597,6 +680,13 @@ async function main() {
     console.log(`Lilith server running at http://localhost:${PORT}`)
     if (!GEMINI_API_KEY) {
       console.warn('⚠  GEMINI_API_KEY not set — metin üretimi çalışmayacak. .env dosyasına ekle.')
+    }
+    // Erken ısınma: Chatterbox'ı ilk replikten ÖNCE arka planda yükle.
+    // Harici resident servis (CHATTERBOX_PYTHON ayarsız, port ayakta) zaten hazırdır.
+    if (CHATTERBOX_PYTHON) {
+      void ensureLocalService().then(ok =>
+        console.log(ok ? '[local-tts] hazır ✓ (ısınma tamam)' : '[local-tts] ısınma başarısız — ilk istekte tekrar denenecek'),
+      )
     }
   })
 }

@@ -9,7 +9,7 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
 | Build | Vite 5 (middleware mode in dev) |
 | Backend | Express + TypeScript (`server/index.ts`) |
-| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS merdiveni: **Chatterbox yerel** (`CHATTERBOX_PYTHON` ile) → Azure F0 (key bekliyor) → Edge → tarayıcı · Gemini TTS parkta (bedava kota 10 istek/gün) |
+| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS: **Fish Audio** default (`s2.1-pro-free`, bulut) → Chatterbox yerel fallback → Edge → tarayıcı · Azure PARK'ta (08-24) · Gemini TTS parkta (bedava kota 10 istek/gün) |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
 ## First-time setup
@@ -27,10 +27,12 @@ npm run dev                # http://localhost:3000
 | `GEMINI_API_KEY` | Yes | Gemini text generation |
 | `GEMINI_MODEL` | No | Text model. Default `gemini-3.5-flash-lite` (pinned). Not: 2.5-flash çok yavaş (5.1s); 3.7-flash yük altında (503) |
 | `GEMINI_HISTORY` | No | Geçmiş penceresi, mesaj adedi. Default 20 |
-| `AZURE_SPEECH_KEY` | No | Azure Speech F0 (500K karakter/ay). Key yoksa Azure katmanı atlanır |
-| `AZURE_SPEECH_REGION` | No | Default `westeurope`. Key'in bölgesiyle eşleşmeli |
-| `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew |
-| `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) otomatik başlar. Ayarsızsa katman atlanır |
+| `AZURE_SPEECH_KEY` | No | ⚠ **PARK (08-24, Emre kararı: Azure kullanılmayacak).** Kod duruyor; key ayarlı değilse katman zaten atlanır |
+| `AZURE_SPEECH_REGION` | No | Default `westeurope` (park halinde) |
+| `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew (park halinde) |
+| `FISH_MODEL_LILITH` / `FISH_MODEL_GENERIC` | No | Fish Audio kütüphane ses ID'leri (`.env` — gizli değil). Kozmetik değişim buradan |
+| `FISH_LATENCY` | No | Fish üretim modu: `normal` (default, kararlı) / `balanced` (interaktif, ~%40 hızlı) |
+| `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) **server açılışında erken ısınır**, kapanışta çocuğu öldürülür. Ayarsızsa katman atlanır |
 | `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti default'u. Default 1.2 — beat intensity varsa override edilir (low 0.8 / mid 1.2 / high 1.7) |
 | `LOCAL_TTS_DRAMATIZE` | No | TTS metnine dramatik `…` duraksamaları (transcript'e dokunmaz). Default 1 |
 | `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler (iç kimlikler). Default `lilith,generic` (referanslar: assets/voices/{lilith,varlik}-ref.wav) |
@@ -90,7 +92,7 @@ Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT
 
 - **Edge-TTS mode**: server (`msedge-tts`) returns base64 MP3 (`audio/mpeg`) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- **Voice engine default `local`** (Chatterbox, M4 Pro'da ~1.2× gerçek-zamanlı) — merdiven otomatik düşer: local → azure → edge → tarayıcı. Footer "Simulation Parameters" paneli GERÇEK telemetriyle mount edildi (latencyMs/engine sahte değil).
+- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local → edge (Azure parkta, atlanır). Server açılışında Chatterbox erken ısınır; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9. Ses seçimi kütüphaneden: L4 LEILA (Lilith) · V3 mazlum kiper (Varlık) — geçici, Voice Design ile yükseltilecek
 - **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
 
 ## Sentiment system
@@ -106,7 +108,7 @@ Global sentiment drives the page's ambient glow color (box-shadow + radial gradi
 ## Scripts
 
 ```bash
-npm run dev       # Express + Vite dev server (hot reload)
+operator secret run lilith -- npm run dev   # FISH_AUDIO_KEY kasadan gelir (GEMINI .env'de)
 npm run build     # Vite production build → dist/client/
 npm run start     # Production Express server (serves dist/client/)
 npm test          # vitest run (8 test)

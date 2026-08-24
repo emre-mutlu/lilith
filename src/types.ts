@@ -1,7 +1,7 @@
 export type Speaker = 'lilith' | 'generic' | 'user'
 export type SessionState = 'inactive' | 'running' | 'paused'
 export type SpeakerState = 'idle' | 'generating' | 'speaking'
-export type VoiceEngine = 'edge' | 'browser' | 'gemini' | 'azure' | 'local'
+export type VoiceEngine = 'edge' | 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
 export type SentimentIntensity = 'high' | 'mid' | 'low'
 
 export interface Message {
@@ -47,8 +47,8 @@ export interface GenerateResponse {
   intensity?: 'low' | 'mid' | 'high'
   audio?: string | null
   mimeType?: string | null
-  /** Sesfi gerçekten hangi katman verdi: local/azure/edge/gemini/browser/none */
-  engine?: 'local' | 'azure' | 'edge' | 'gemini' | 'browser' | 'none'
+  /** Sesfi gerçekten hangi katman verdi: fish/local/azure/edge/gemini/browser/none */
+  engine?: 'fish' | 'local' | 'azure' | 'edge' | 'gemini' | 'browser' | 'none'
   /** Toplam tur süresi (metin+ses), ms */
   latencyMs?: number
   error?: string

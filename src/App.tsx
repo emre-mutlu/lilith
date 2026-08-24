@@ -136,7 +136,25 @@ export default function App() {
   const [scenario, setScenario] = useState<ScenarioPrelude | null>(null)
   const sessionIdRef = useRef<string | null>(null)
 
-  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('local')
+  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('fish')
+
+  // Yerel TTS (Chatterbox) ısınma durumu — /api/tts/status'tan beslenir
+  const [localTts, setLocalTts] = useState<{ configured: boolean; ready: boolean; warming: boolean }>({
+    configured: false, ready: false, warming: false,
+  })
+  useEffect(() => {
+    let stop = false
+    let timer: ReturnType<typeof setTimeout>
+    const tick = async () => {
+      try {
+        const r = await fetch('/api/tts/status')
+        if (r.ok && !stop) setLocalTts(await r.json())
+      } catch { /* server yok — sessizce tekrar dene */ }
+      if (!stop) timer = setTimeout(tick, 2000)
+    }
+    void tick()
+    return () => { stop = true; clearTimeout(timer) }
+  }, [])
 
   // Gerçek telemetri: /api/generate'in döndürdüğü latencyMs + engine'den beslenir
   const [telemetry, setTelemetry] = useState<Telemetry>({
@@ -734,6 +752,7 @@ export default function App() {
         <SimParameters
           voiceEngine={voiceEngine}
           setVoiceEngine={setVoiceEngine}
+          localTts={localTts}
           rate={browserRate}
           setRate={setBrowserRate}
           pitch={browserPitch}
