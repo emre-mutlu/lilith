@@ -1,4 +1,3 @@
-import 'node:process'
 import express from 'express'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,12 +32,6 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite'
 // Geçmiş penceresi — kayan pencere boyutu (mesaj adedi). Faz 2'de 12/20/30 A/B
 // ölçümü yapılacak; varsayılan 20 (eski sabit 12 prototipten kalma, hiç ölçülmemişti).
 const HISTORY_WINDOW = parseInt(process.env.GEMINI_HISTORY ?? '20', 10)
-
-const LABELS: Record<string, string> = {
-  lilith: 'Kraliçe Lilith',
-  generic: 'Varlık',
-  user: 'Moderatör (Kullanıcı)',
-}
 
 const SYSTEM_INSTRUCTIONS: Record<string, string> = {
   lilith: `Sen Kraliçe Lilith'sin.
@@ -80,7 +73,7 @@ interface GeminiVoiceCandidate {
   style: string
 }
 
-export const GEMINI_VOICE_CANDIDATES: Record<TtsSpeaker, GeminiVoiceCandidate[]> = {
+const GEMINI_VOICE_CANDIDATES: Record<TtsSpeaker, GeminiVoiceCandidate[]> = {
   lilith: [
     { voice: 'Kore',      style: 'AUDIO PROFILE: Kraliçe Lilith. Buz gibi, aristokrat, ölçülü. Her cümle bir lütufmuş gibi verilir. Tempo yavaş, ton soğuk ama kırılgan değil — kumanda edici sakinlik.' },
     { voice: 'Gacrux',    style: 'AUDIO PROFILE: Kraliçe Lilith. Olgun matriark ağırlığı; yılların verdiği vakar. Derin, ağırbaşlı, hafif alaycı bir bilgelik. Acele etmeyen bir tını.' },
@@ -141,11 +134,6 @@ function appendTurnLog(sessionId: string | undefined, entry: Record<string, unkn
   if (!sessionId || !SAFE_ID.test(sessionId)) return
   const line = JSON.stringify({ ts: new Date().toISOString(), ...entry })
   fs.appendFile(path.join(SESSIONS_DIR, `${sessionId}.jsonl`), line + '\n', () => {})
-}
-
-function buildHistoryText(history: Message[]): string {
-  if (history.length === 0) return '(Henüz konuşma başlamadı. Konuşmayı sen başlat.)'
-  return history.map(m => `${LABELS[m.sender]}: ${m.text}`).join('\n')
 }
 
 function stripPrefix(text: string): string {

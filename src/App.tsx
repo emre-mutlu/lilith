@@ -23,6 +23,14 @@ function makeId(): string {
   return Math.random().toString(36).slice(2, 10)
 }
 
+const CHAR_LABELS: Record<string, string> = {
+  lilith: 'Kraliçe Lilith', generic: 'Varlık', user: 'Moderatör (Kullanıcı)',
+}
+
+function transcriptText(messages: Message[]): string {
+  return messages.map(m => `[${m.timestamp}] ${CHAR_LABELS[m.sender]}: ${m.text}`).join('\n')
+}
+
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 
 function listTtsVoices(): SpeechSynthesisVoice[] {
@@ -53,8 +61,7 @@ function autoPickVoices(voices: SpeechSynthesisVoice[]): [string, string] {
   return [lilith.voiceURI, varlik.voiceURI]
 }
 
-const CHAR_PROSODY: Record<string, { rate: number; pitch: number }> = {
-  lilith:  { rate: 0.88, pitch: 0.82 },
+const CHAR_PROSODY: Record<string, { rate: number; pitch: number }> = {  lilith:  { rate: 0.88, pitch: 0.82 },
   generic: { rate: 1.02, pitch: 1.18 },
 }
 
@@ -591,15 +598,11 @@ export default function App() {
   }
 
   const handleCopy = async () => {
-    const labels: Record<string, string> = { lilith: 'Kraliçe Lilith', generic: 'Varlık', user: 'Moderatör (Kullanıcı)' }
-    const txt = messages.map(m => `[${m.timestamp}] ${labels[m.sender]}: ${m.text}`).join('\n')
-    try { await navigator.clipboard.writeText(txt) } catch {}
+    try { await navigator.clipboard.writeText(transcriptText(messages)) } catch {}
   }
 
   const handleDownload = () => {
-    const labels: Record<string, string> = { lilith: 'Kraliçe Lilith', generic: 'Varlık', user: 'Moderatör (Kullanıcı)' }
-    const txt = messages.map(m => `[${m.timestamp}] ${labels[m.sender]}: ${m.text}`).join('\n')
-    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob([transcriptText(messages)], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = 'lilith-dialog.txt'
