@@ -18,7 +18,8 @@ Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) c
 ## Sıradaki
 1. launchd: chatterbox servisini kalıcı resident yap (Operator gündeminde).
 2. Sahne kartı tasarımı + ambient duygu eşlemesinin zenginleştirilmesi (Emre kararına açık).
-3. vite@8 major yükseltme kararı (audit'in kalan kalemi).
+
+*(08-25 ikinci tur: bağımlılık modernizasyonu TAMAM — vite 8 + express 5 + @google/genai 2 + TypeScript 7; `npm audit` 0 vulnerability. React 19 ölçümle reddedildi: bundle +%26, getirim sıfır.)*
 
 ---
 ---
