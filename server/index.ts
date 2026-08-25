@@ -15,7 +15,7 @@ import { intensityToExaggeration } from './ttsText.js'
 import { generateFishTts } from './fishTts.js'
 import { generateGeminiTts } from './geminiTts.js'
 import { generateAzureTts } from './azureTts.js'
-import { generateLocalTts, localTtsStatus, warmLocalTts } from './localTts.js'
+import { generateLocalTts, localTtsStatus } from './localTts.js'
 import { GoogleGenAI } from '@google/genai'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -213,9 +213,8 @@ async function main() {
     if (!GEMINI_API_KEY) {
       console.warn('⚠  GEMINI_API_KEY not set — metin üretimi çalışmayacak. .env dosyasına ekle.')
     }
-    // Erken ısınma: Chatterbox'ı ilk replikten ÖNCE arka planda yükle.
-    // Harici resident servis (CHATTERBOX_PYTHON ayarsız, port ayakta) zaten hazırdır.
-    warmLocalTts()
+    // Not: Chatterbox açılışta ISINMAZ — yalnız kullanıcı yerel motoru seçince
+    // ilk local isteğinde spawn edilir (ensureLocalService). Emre kararı 08-25.
   })
 }
 

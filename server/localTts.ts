@@ -100,10 +100,3 @@ export async function localTtsStatus(): Promise<{ configured: boolean; ready: bo
   return { configured: Boolean(CHATTERBOX_PYTHON), ready, warming: !ready && localWarming }
 }
 
-/** Sunucu açılışında erken ısınma — Chatterbox'ı ilk replikten önce yükle. */
-export function warmLocalTts(): void {
-  if (!CHATTERBOX_PYTHON) return
-  void ensureLocalService().then(ok =>
-    console.log(ok ? '[local-tts] hazır ✓ (ısınma tamam)' : '[local-tts] ısınma başarısız — ilk istekte tekrar denenecek'),
-  )
-}

@@ -32,7 +32,7 @@ npm run dev                # http://localhost:3000
 | `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew (park halinde) |
 | `FISH_MODEL_LILITH` / `FISH_MODEL_GENERIC` | No | Fish Audio kütüphane ses ID'leri (`.env` — gizli değil). Kozmetik değişim buradan |
 | `FISH_LATENCY` | No | Fish üretim modu: `normal` (default, kararlı) / `balanced` (interaktif, ~%40 hızlı) |
-| `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777) **server açılışında erken ısınır**, kapanışta çocuğu öldürülür. Ayarsızsa katman atlanır |
+| `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777). **Açılışta ısınmaz** — yalnız kullanıcı yerel motoru seçince ilk istekte başlar; kapanışta çocuğu öldürülür. Ayarsızsa katman atlanır |
 | `LOCAL_TTS_EXAGGERATION` | No | Chatterbox duygu şiddeti default'u. Default 1.2 — beat intensity varsa override edilir (low 0.8 / mid 1.2 / high 1.7) |
 | `LOCAL_TTS_DRAMATIZE` | No | TTS metnine dramatik `…` duraksamaları (transcript'e dokunmaz). Default 1 |
 | `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler (iç kimlikler). Default `lilith,generic` (referanslar: assets/voices/{lilith,varlik}-ref.wav) |
@@ -100,7 +100,7 @@ Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT
 
 - **Fish mode (default)**: server returns base64 WAV (`audio/wav`, 44.1kHz) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (bağlıysa) → tarayıcı TTS. Server açılışında Chatterbox erken ısınır; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9. Ses seçimi kütüphaneden: L4 LEILA (Lilith) · V3 mazlum kiper (Varlık) — geçici, Voice Design ile yükseltilecek
+- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (bağlıysa) → tarayıcı TTS. Chatterbox açılışta ısınmaz — yalnız seçilirse ilk istekte spawn edilir; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9. Ses seçimi kütüphaneden: L4 LEILA (Lilith) · V3 mazlum kiper (Varlık) — geçici, Voice Design ile yükseltilecek
 - **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
 
 ## Sentiment system

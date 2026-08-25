@@ -27,7 +27,7 @@ React 18 + TS + Tailwind v4  ←→  Express + TS (server/)
 | Katman | Not |
 |---|---|
 | **fish** | Fish Audio bulutu (`s2.1-pro-free`, ücretsiz) — kütüphane sesleri `.env`'deki model ID'lerinden |
-| **local** | Chatterbox (MPS, ~1.2× gerçek-zamanlı). Referans klip = sabit ses kimliği (`assets/voices/*.wav`). `CHATTERBOX_PYTHON` ayarlıysa Node servisi kendisi başlatır |
+| **local** | Chatterbox (MPS, ~1.2× gerçek-zamanlı). Referans klip = sabit ses kimliği (`assets/voices/*.wav`). `CHATTERBOX_PYTHON` ayarlıysa Node servisi ilk kullanımda kendisi başlatır (açılışta ısınmaz) |
 | **gemini** | Bedava kota 10 istek/gün — özel anlar için parkta |
 | **browser** | SpeechSynthesis, karakter prosodisi + duygu modülasyonu |
 
