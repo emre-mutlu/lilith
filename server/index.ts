@@ -196,7 +196,8 @@ async function main() {
   if (isProd) {
     const clientDir = path.join(__dirname, '../dist/client')
     app.use(express.static(clientDir))
-    app.get('*', (_req, res) => {
+    // Express 5: isimli wildcard zorunlu — {*splat} kök dahil tüm yolları yakalar
+    app.get('{*splat}', (_req, res) => {
       res.sendFile(path.join(clientDir, 'index.html'))
     })
   } else {
