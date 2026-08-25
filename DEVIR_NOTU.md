@@ -1,5 +1,30 @@
 # Lilith — Devir Notu
 
+*Son güncelleme: 2026-08-25*
+
+## Durum
+Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) canlı. TTS merdiveni: fish → local (Chatterbox) → tarayıcı; Azure/Gemini-TTS parkta. İlke: tamamen ücretsiz katmanlar (Emre, 08-24).
+
+## Kaldığın yer (08-25 kod-incelemesi + hijyen oturumu)
+- **Monolit dağıtıldı:** `server/index.ts` 680→224 satır. TTS katmanları `server/{fish,gemini,azure,local}Tts.ts`, diyalog çekirdeği `server/dialogue.ts`'e taşındı; index.ts route+merdiven katmanı.
+- **Tipler tek kaynakta:** `shared/types.ts` (src/types.ts oraya taşındı) — server→src ters bağımlılığı kalktı; server'ın lokal Message kopyası silindi, HistMsg artık `Pick<Message>`.
+- **App.tsx inceldi:** tarayıcı-TTS yardımcıları (ses seçimi, prosodi, PCM decoder) → `src/lib/browserTts.ts`.
+- **Test kapsamı 19→30:** diyalog çekirdeği (stripPrefix/roleContents/pinMemoryBlock) artık doğrudan testli (`server/dialogue.test.ts`).
+- **/api/tts local dalı tek yola indi** — generateLocalTts'e devredildi; davranış farkı: dramatize artık burada da uygulanır.
+- **Ölü kod temizliği:** buildHistoryText/LABELS, gereksiz export/importlar silindi.
+- **npm audit:** body-parser (high) + protobufjs kırıcısız çözüldü. Kalan esbuild dev-server açıklığı **vite@8 major yükseltmesi** bekliyor (dev-only maruziyet; ayrı oturum kararı).
+- **Hijyen:** sessions/*.jsonl temizlendi (politika yok — birikince elle); `chats/chat1.md` bilinçli duruyor (doğum sohbeti, Emre kararı).
+
+## Sıradaki
+1. launchd: chatterbox servisini kalıcı resident yap (Operator gündeminde).
+2. Sahne kartı tasarımı + ambient duygu eşlemesinin zenginleştirilmesi (Emre kararına açık).
+3. vite@8 major yükseltme kararı (audit'in kalan kalemi).
+
+---
+---
+
+# Arşiv — 2026-06-01 devri (bayat; tarihsel kayıt)
+
 *Son güncelleme: 2026-06-01*
 
 ## Durum

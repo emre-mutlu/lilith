@@ -41,17 +41,25 @@ npm run dev                # http://localhost:3000
 ## Project structure
 
 ```
+shared/
+  types.ts          Tek tip kaynağı: Message, ScenarioPrelude, TtsSpeaker, VoiceEngine…
 server/
-  index.ts          Express server + Gemini API routes (/api/director, /api/generate, /api/tts)
+  index.ts          Express routes (/api/director, /api/generate, /api/tts, /api/tts/status) + TTS merdiveni
+  dialogue.ts       Diyalog çekirdeği: system instructions, roleContents, pin-bellek, generateText
   director.ts       Senaryo sistemi: 24 eğilim + yay/tür/tempo eksenleri, prelüd şeması + doğrulama
+  fishTts.ts        Fish Audio bulut katmanı (s2.1-pro-free)
+  geminiTts.ts      Gemini TTS katmanı (parkta, kota düşük) + casting aday listesi
+  azureTts.ts       Azure Speech katmanı (PARK — key ayarsızsa atlanır)
+  localTts.ts       Chatterbox istemcisi: sağlık-cache, spawn/ısınma/temiz kapanış
+  fishText.ts       prepareFishText (duygu etiketleri + [break])
   ttsText.ts        dramatizeForTts (… duraksamaları) + intensityToExaggeration kalibrasyonu
   chatterbox_service.py  Yerel TTS servisi (port 8777, resident — spawn yolu güvenilmez)
-  faz2.test.ts      vitest: 8 test (prelüd doğrulama, dramatize, kalibrasyon, senaryo bloğu)
+  faz2.test.ts · intervention.test.ts · dialogue.test.ts   vitest: 30 test
 src/
   App.tsx           Conversation loop, audio playback, senaryo akışı, telemetri state
-  types.ts          Shared TypeScript types (Message.mood/intensity, ScenarioPrelude)
   lib/
     sentiment.ts    Per-message scoring + global sentiment (no API)
+    browserTts.ts   Tarayıcı-TTS yardımcıları: ses seçimi, prosodi, PCM decoder
   components/
     Header.tsx      Sentiment HUD, status dots
     CenterOverlay.tsx  Active-word card (desktop only)
@@ -111,7 +119,7 @@ Global sentiment drives the page's ambient glow color (box-shadow + radial gradi
 operator secret run lilith -- npm run dev   # FISH_AUDIO_KEY kasadan gelir (GEMINI .env'de)
 npm run build     # Vite production build → dist/client/
 npm run start     # Production Express server (serves dist/client/)
-npm test          # vitest run (8 test)
+npm test          # vitest run (30 test)
 npm run typecheck # tsc --noEmit
 ```
 

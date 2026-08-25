@@ -53,6 +53,8 @@ Footer "Simulation Parameters" paneli sahte sayı göstermez: son tur / ortalama
 | `GEMINI_API_KEY` | ✅ | Metin üretimi |
 | `GEMINI_MODEL` | — | Pinned: `gemini-3.5-flash-lite`. Alias kullanma |
 | `GEMINI_HISTORY` | — | Geçmiş penceresi (default 20) |
+| `FISH_MODEL_LILITH` / `FISH_MODEL_GENERIC` | — | Fish Audio kütüphane ses ID'leri (default motor) |
+| `FISH_LATENCY` | — | `normal` (default, kararlı) / `balanced` (interaktif, ~%40 hızlı) |
 | `CHATTERBOX_PYTHON` | — | Chatterbox venv python yolu → port 8777 servisi |
 | `LOCAL_TTS_EXAGGERATION` | — | Default 1.2 (beat intensity override eder) |
 | `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` | — | Ayarsızsa Azure katmanı atlanır |
