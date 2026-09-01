@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { stripPrefix, roleContents, pinMemoryBlock } from './dialogue'
+import { stripPrefix, roleContents, pinMemoryBlock, SYSTEM_INSTRUCTIONS } from './dialogue'
+import { sozFrame, fisiltiFrame } from './intervention'
 import type { Message } from '../shared/types'
 
 const msg = (p: Partial<Message>): Message => ({
@@ -99,5 +100,30 @@ describe('pinMemoryBlock', () => {
   })
   it('high yoksa boş döner', () => {
     expect(pinMemoryBlock('lilith', [msg({ sender: 'generic', text: 'sakin' })])).toBe('')
+  })
+})
+
+describe('müdahale talimatı', () => {
+  const speakers = ['lilith', 'generic'] as const
+
+  it('her iki karakter de söz ve fısıltı çerçevesini tanır', () => {
+    // Çerçeveleri intervention.ts kurar; talimat aynı dili konuşmazsa
+    // karakter metni tanımaz ve müdahaleyi es geçer.
+    for (const speaker of speakers) {
+      const s = SYSTEM_INSTRUCTIONS[speaker]
+      expect(s).toContain('Sahne dışından')
+      expect(s).toContain('fısıltı')
+    }
+  })
+
+  it('çerçeve metinleri talimatla örtüşür', () => {
+    expect(sozFrame('dur')).toContain('Sahne dışından')
+    expect(fisiltiFrame('dur')).toContain('fısıltı')
+  })
+
+  it('tepkiyi zorunlu kılar ama biçimini karaktere bırakır', () => {
+    for (const speaker of speakers) {
+      expect(SYSTEM_INSTRUCTIONS[speaker]).toMatch(/karşılıksız bırakma|yok sayma/i)
+    }
   })
 })

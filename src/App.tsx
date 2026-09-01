@@ -11,6 +11,7 @@ import TranscriptStream from './components/footer/TranscriptStream'
 import SimParameters, { type Telemetry } from './components/footer/SimParameters'
 import SceneCard from './components/SceneCard'
 import { AmbientEngine } from './lib/ambient'
+import { turnGapMs, sleep } from './lib/pacing'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -292,6 +293,8 @@ export default function App() {
         next()
       })
 
+      // Replik boyunca ambiyans geri çekilir — konuşma her zaman önde
+      ambientRef.current?.setDucked(true)
       try {
         // Sunucudan ses geldiyse (fish/local/gemini) Web Audio ile çal;
         // yoksa (browser motoru ya da tüm merdiven düştüyse) tarayıcı TTS'e geç
@@ -306,6 +309,7 @@ export default function App() {
           await trySpeechSynthesis()
         }
       } finally {
+        ambientRef.current?.setDucked(false)
         if (token === cancelTokenRef.current) stopWordTimer()
         resolve()
       }
@@ -404,7 +408,8 @@ export default function App() {
     }
 
     // Replik bitti — bekleyen söz/fısıltıları sahneye düşür (sonraki tur görür)
-    if (queuedInterventionsRef.current.length) {
+    const interrupted = queuedInterventionsRef.current.length > 0
+    if (interrupted) {
       messagesRef.current = [...messagesRef.current, ...queuedInterventionsRef.current]
       setMessages(messagesRef.current)
       queuedInterventionsRef.current = []
@@ -412,7 +417,17 @@ export default function App() {
 
     setSpeakerState('idle')
     setActiveSpeaker(null)
-    const nextResult = await prefetchPromise
+
+    // Prefetch replik BAŞLARKEN kurulur; araya müdahale girdiyse o cevap bayattır
+    // (müdahaleyi görmemiş geçmişle üretilmiş) → atılır, güncel geçmişle yenisi
+    // istenir. Es ile paralel gittiği için kullanıcı ek gecikme duymaz.
+    const pending: Promise<TurnResult | null> = interrupted
+      ? generateTurn(next).catch(() => null)
+      : prefetchPromise
+    const [nextResult] = await Promise.all([pending, sleep(turnGapMs(result.intensity))])
+
+    if (token !== cancelTokenRef.current) return
+    if (sessionStateRef.current !== 'running') { setSpeakerState('idle'); setActiveSpeaker(null); return }
     runTurnRef.current?.(next, token, nextResult)
   }, [generateTurn, speakMessage])
 
@@ -427,9 +442,14 @@ export default function App() {
       stopAllAudio()
       setActiveSpeaker(null)
       setSpeakerState('idle')
+      sessionStateRef.current = 'paused'
       setSessionState('paused')
       return
     }
+    // Ref'i senkron yaz: setSessionState bir sonraki render'da işlenir, oysa
+    // begin() hemen çalışır ve runTurn ref'e bakar — beklersek döngü sessizce
+    // ölür (duraklat → devam çalışmaz olurdu).
+    sessionStateRef.current = 'running'
     setSessionState('running')
     const token = ++cancelTokenRef.current
 
@@ -462,6 +482,7 @@ export default function App() {
     stopAllAudio()
     queuedInterventionsRef.current = []
     setMessages([])
+    sessionStateRef.current = 'inactive'
     setSessionState('inactive')
     setActiveSpeaker(null)
     setSpeakerState('idle')

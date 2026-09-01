@@ -65,19 +65,24 @@ describe('scenarioBlock enjeksiyonu', () => {
 })
 
 describe('prepareFishText', () => {
-  it('high intensity → [intense] etiketi + [break] duraksamaları', () => {
-    const out = prepareFishText('Ben senin karşında duran tek gerçeklik. Sen ise henüz bir sorusun.', 'high')
-    expect(out.startsWith('[intense] ')).toBe(true)
-    expect(out).toContain('Ben [break]')
-    expect(out).not.toContain('…')
+  // 09-01 kararı (Emre, A/B dinleme): yapay duraksama Fish yolundan kalktı.
+  // S2.1 prozodiyi noktalamadan kendisi üretiyor; kelime sayısına göre konan
+  // [break]'ler her repliği aynı kalıba sokup tempoyu %11 yavaşlatıyordu.
+  it('metne yapay duraksama eklemez', () => {
+    const ham = 'Ben senin karşında duran tek gerçeklik. Sen ise henüz bir sorusun.'
+    expect(prepareFishText(ham)).toBe(ham)
+  })
+  it('soru cümlesini olduğu gibi bırakır — vurgu taşıyan son öbek bölünmez', () => {
+    const soru = 'Senin kontrol edemediğin bir şey mi bu?'
+    expect(prepareFishText(soru, 'mid')).toBe(soru)
+  })
+  it('high intensity → [emphasis] (Fish tag listesinde geçerli)', () => {
+    expect(prepareFishText('Hiçbir şeydin!', 'high')).toBe('[emphasis] Hiçbir şeydin!')
   })
   it('low intensity → [soft tone] etiketi', () => {
-    const out = prepareFishText('Merhaba.', 'low')
-    expect(out).toBe('[soft tone] Merhaba.')
+    expect(prepareFishText('Merhaba.', 'low')).toBe('[soft tone] Merhaba.')
   })
-  it('mid/intensity yok → etiket yok, duraksama dönüşümü sürer', () => {
-    const out = prepareFishText('Ben senin karşında duran tek gerçeklik. Sen ise henüz bir sorusun.')
-    expect(out.startsWith('[')).toBe(false)
-    expect(out).toContain('[break]')
+  it('etiket sözcüğe yapışmaz', () => {
+    expect(prepareFishText('Bir şey mi bu?', 'high')).toMatch(/^\[emphasis\] \S/)
   })
 })

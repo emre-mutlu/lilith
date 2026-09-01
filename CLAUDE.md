@@ -51,14 +51,16 @@ server/
   geminiTts.ts      Gemini TTS katmanı (parkta, kota düşük) + casting aday listesi
   azureTts.ts       Azure Speech katmanı (PARK — key ayarsızsa atlanır)
   localTts.ts       Chatterbox istemcisi: sağlık-cache, spawn/ısınma/temiz kapanış
-  fishText.ts       prepareFishText (duygu etiketleri + [break])
-  ttsText.ts        dramatizeForTts (… duraksamaları) + intensityToExaggeration kalibrasyonu
+  fishText.ts       prepareFishText — yalnız duygu etiketi ([emphasis]/[soft tone]); yapay duraksama YOK
+  ttsText.ts        dramatizeForTts (… duraksamaları — artık SADECE Chatterbox) + intensityToExaggeration
   chatterbox_service.py  Yerel TTS servisi (port 8777, resident — spawn yolu güvenilmez)
-  faz2.test.ts · intervention.test.ts · dialogue.test.ts   vitest: 30 test
+  faz2.test.ts · intervention.test.ts · dialogue.test.ts   vitest: 45 test (src/lib dahil)
 src/
   App.tsx           Conversation loop, audio playback, senaryo akışı, telemetri state
   lib/
     sentiment.ts    Per-message scoring + global sentiment (no API)
+    pacing.ts       Replikler arası es: yoğunluk→süre + jitter (saf, test edilir)
+    ambientParams.ts  Ambiyans ruh hâli → sentez parametreleri (saf, test edilir)
     browserTts.ts   Tarayıcı-TTS yardımcıları: ses seçimi, prosodi, PCM decoder
   components/
     Header.tsx      Sentiment HUD, status dots
@@ -91,8 +93,8 @@ Beat şeması: her replik {text, mood, intensity} — intensity Chatterbox abart
 
 | Character | System prompt role | TTS voice | Color |
 |-----------|-------------------|-----------|-------|
-| Kraliçe Lilith | Zarif, manipülatif kraliçe | Fish: L4 LEILA (geçici) · Chatterbox bağlıysa `lilith-ref.wav` | #D4AF37 (gold) |
-| Varlık | Tabula rasa, şekillenmemiş | Fish: V3 mazlum kiper (geçici) · Chatterbox bağlıysa `varlik-ref.wav` | #D0D0D0 (white) |
+| Kraliçe Lilith | Zarif, manipülatif kraliçe | Fish: **Hüma** (saf `tr`) · Chatterbox bağlıysa `lilith-ref.wav` | #D4AF37 (gold) |
+| Varlık | Tabula rasa, şekillenmemiş | Fish: **Khonus** (saf `tr`) · Chatterbox bağlıysa `varlik-ref.wav` | #D0D0D0 (white) |
 
 Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT), `LOCAL_TTS_PROFILE` kişi-bazlı ref+cfg taşır. İlk nesil Achernar/Iapetus Gemini-damıtmaları + casting kaynakları `~/Documents/Claude/arsiv/lilith-eser`'de.
 
@@ -100,8 +102,15 @@ Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT
 
 - **Fish mode (default)**: server returns base64 WAV (`audio/wav`, 44.1kHz) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (bağlıysa) → tarayıcı TTS. Chatterbox açılışta ısınmaz — yalnız seçilirse ilk istekte spawn edilir; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9. Ses seçimi kütüphaneden: L4 LEILA (Lilith) · V3 mazlum kiper (Varlık) — geçici, Voice Design ile yükseltilecek
+- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (bağlıysa) → tarayıcı TTS. Chatterbox açılışta ısınmaz — yalnız seçilirse ilk istekte spawn edilir; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9.
+  **Tempo/vurgu dersi (09-01, Emre A/B dinleyip karar verdi):** Fish'e giden metne artık **yapay duraksama eklenmiyor**. Önceki `dramatizeForTts` + `…`→`[break]` katmanı break'leri *kelime sayısına* göre koyuyordu (6+ kelimede hep 1. kelimeden sonra ve son iki kelimeden önce) → her replik aynı ritim kalıbı, konuşma ~%11 daha yavaş, üstelik `[break]mi` gibi sözcüğe yapışık. S2.1 prozodiyi noktalamadan zaten üretiyor. Etiketler doküman listesine hizalandı: `[intense]` (listede yok) → **`[emphasis]`**; `[soft tone]` geçerli. `[pause]` desteklenmiyor, `[break]`/`[long-break]` geçerli — ama artık kullanılmıyor. Ses seçimi kütüphaneden — **her ikisi de saf `tr`**: Hüma (Lilith) · Khonus (Varlık).
+  **Casting kriteri (Emre, 09-01): Türkçe · en çok kullanılan · ünlü olmayan.** Global (dil filtresiz) en çok kullanılan **500 modelin hiçbiri `tr` desteklemiyor** — ölçüldü, o yol kapalı. Gerçek kişi/karakter taklitleri (Erdoğan 30k, Atatürk, Polat Alemdar…) kriter gereği elenir. Khonus = 3692 kullanım, `conversational`; önceki mazlum kiper (2214) `old + narration + documentary` idi — belgesel anlatıcısı tınısı, Varlık'ın şekillenmemiş karakterine ters.
+  **Seviye dersi (09-01):** eski LEILA `['fr','en','tr']` idi — hem Türkçe aksanı bozuktu hem de **13.4 dB** sessizdi. Hüma'ya geçince karakterler arası fark **0.3 dB**'ye indi, yani RMS normalizasyonu gereksiz kaldı (ölçüldü, sonra iptal edildi). Kalan ~4 dB'lik oynama replik-içi ve **kasıtlı**: `intensity → temperature` eşlemesi sessiz repliği bilerek sessiz bırakıyor; normalize etmek o dinamiği düzleştirir.
 - **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
+
+## Konuşma temposu (es)
+
+`src/lib/pacing.ts` — replikler arası es'i **biten repliğin yoğunluğu** sürer: `low 2200ms · mid 1200ms · high 600ms`, üstüne ±%25 jitter (jittersiz ritim metronoma dönüyor). Es, sonraki repliğin prefetch'iyle **paralel** koşar (`Promise.all`), yani bir *taban*: model geç dönerse üstüne gecikme binmez.
 
 ## Sentiment system
 
@@ -119,7 +128,7 @@ Global sentiment drives the page's ambient glow color (box-shadow + radial gradi
 operator secret run lilith -- npm run dev   # FISH_AUDIO_KEY kasadan gelir (GEMINI .env'de)
 npm run build     # Vite production build → dist/client/
 npm run start     # Production Express server (serves dist/client/)
-npm test          # vitest run (30 test)
+npm test          # vitest run (45 test)
 npm run typecheck # tsc --noEmit
 ```
 
@@ -132,6 +141,7 @@ npm run typecheck # tsc --noEmit
 
 ## Faz 4 · Eser katmanı (prova edildi, ilk entegrasyon canlı)
 
-- **Prosedürel ambient** (`src/lib/ambient.ts`): Web Audio drone+hava; sentiment'ten mood sürer (brightness=percent, tension=baskın konuşan+tırmanış eğimi+high-intensity dalgası). Gerilimle filtre süpürmesi genişler, kalp-atışı nabzı hızlanır. Sol alt "♪ AMBİYANS" düğmesi. **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
+- **Prosedürel ambient** (`src/lib/ambient.ts` + saf eşleme `ambientParams.ts`): Web Audio drone+hava; sentiment'ten mood sürer (brightness=percent, tension=baskın konuşan+tırmanış eğimi+high-intensity dalgası). Zincir: `kaynaklar → preFx → [dry | convolver→wet] → level → duck → çıkış`.
+  **09-01 revizyonu:** taban seviye 0.85→**0.30** + replik boyunca **ducking** (0.45×, `setDucked`) — konuşmayla yarışıyordu. **Değişken yankı**: prosedürel impulse response (üstel sönümlü gürültü, dosya yok), wet oranı gerilimle 0.10→0.50. Kompleksite: zıt yönde dolaşan stereo panorama, gerilimle E3↔F3 arası kayan üst katman, 9-26sn arası seyrek shimmer tonları (yankıya düşer). **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
 - **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz) ile senaryo eksenlerinden prompt kurup görsel üretir; footer sol hücresine yerleşik (kart + ambiyans rayı, SimParameters yanında), ↻ yeni seed. İnce tasarım sonraya — Emre kararı açık.
 - Gemini görsel (`gemini-3.1-flash-image`, `nano-banana-pro-preview`) + Lyria: free kota dar (429) → parkta. Pollinations latency 2-35sn oynak.
