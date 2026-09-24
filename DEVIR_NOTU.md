@@ -1,6 +1,12 @@
 # Lilith — Devir Notu
 
-*Son güncelleme: 2026-08-25*
+*Son güncelleme: 2026-09-24*
+
+## 09-24 · Gemini 503 — AÇIK, karar Emre'de (onay bekliyor)
+- **Belirti:** uygulama açılıyor ama konuşma ilerlemiyor. `/api/generate` + `/api/director` Gemini'den **503 "high demand"** alıyor; `withRetry` (`server/dialogue.ts:67`) yalnız 429'u yeniden deniyor → 503'te istek anında düşer.
+- **Ölçüm (09-24, kısa tek-replik isteği, 3–6 istek/model):** 3.8-flash 6/6 503 · 3.7-flash 6/6 503 · omni-1.1-flash + omni-flash-preview 6/6 **429** (ücretsiz kotada yok) · 3.6-flash 6/6 ok, 2.4–22s (ortanca ~7.5s) · 3.5-flash-lite (pinli) 3/6 ok, 25–33s · 2.5-flash 4/6 ok, 1.6–1.8s · 2.5-flash-lite 404 · `3.6-flash-lite` YOK (models.list). Yarım saat sonra 3.6-flash da director'da 4/4 503 → yük modeller arasında dolaşıyor, model seçimi kalıcı çözüm değil.
+- **Pin değişmedi:** `.env`/kod hâlâ `gemini-3.5-flash-lite` (3.6-flash yalnız env ile denendi).
+- **Önerilen düzeltme (Emre onayı bekliyor, dal+PR):** (1) 503'te kısa geri çekilmeli yeniden deneme (~2s, ~5s); (2) yalnız o da düşerse yedek model (3.6-flash ↔ 3.5-flash-lite, 2.5-flash sonda); (3) `sessions/*.jsonl`'e replik başına model kaydı. Sohbet kopmaz (sunucu durumsuz: history+scenario+pin her istekte istemciden) ama **üslup kayması** riski var — ölçülmedi.
 
 ## Durum
 Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) canlı. TTS merdiveni: fish → local (Chatterbox) → tarayıcı; Azure/Gemini-TTS parkta. İlke: tamamen ücretsiz katmanlar (Emre, 08-24).
