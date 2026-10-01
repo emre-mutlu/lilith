@@ -13,7 +13,7 @@
 | 4.2 | 503 yeniden denenmiyor, 429'da 35 sn | ✅ Doğru | DEVIR_NOTU 09-24 önerisi koda girmemişti |
 | 4.3 | Çift `withRetry`: 429'da 9 deneme, ~280 sn | ✅ Doğru (INCELEME'nin hesabı doğru) | PRUNE'daki "6×35 + istek ≈ 280" hesabı yanlış: 8 bekleme × 35 sn = 280 sn saf bekleme |
 | 4.4 | Sentiment'te kelime-içi sızıntı | ⚠️ **Hata gerçek, gerekçesi ve önerisi kısmen yanlış** | Bkz. §2.2 |
-| 4.5 | Pollinations 402 → sahne kartı bozuk | 🔶 Burada ölçülemedi (sandbox proxy'si engelliyor) | Dış kaynaklar anonim ucun ücretli/anahtarlı düzene geçtiğini doğruluyor |
+| 4.5 | Pollinations 402 → sahne kartı bozuk | ❌ **Yanlış (Emre'nin ortamında)** | Sandbox'tan ölçülemedi; Emre tarayıcıda açtı, görsel geliyor (10-01). Hata durumu yine de eklendi |
 | 4.6a | `sentiment.ts` testsiz | ✅ Doğru | |
 | 4.6b | `ErrorBoundary` yok | ✅ Doğru | |
 | 4.6c | `fishTts.ts` fetch'inde `signal` yok | ❌ **Yanlış** | `server/fishTts.ts:39` → `AbortSignal.timeout(30_000)` |
@@ -78,12 +78,12 @@ Sonuç: **75/75 test** (45 → 75), typecheck temiz, build 196.69 kB / 62.00 kB 
 | Konu | Karar | Durum |
 |---|---|---|
 | Yedek model | Aç: `gemini-3.6-flash,gemini-2.5-flash` | ✅ Default açık, `off` ile kapanır |
-| `project/` | Sil | ⏳ Bulut oturumu dosya silmeyi engelledi — ayrı turda |
-| Azure | Tamamen kaldır | ⏳ Aynı engel; dosya silinmeden referanslar koparılmadı (sahipsiz dosya kalmasın) |
+| `project/` | Sil | ✅ Silindi (Emre izniyle, ikinci tur) — geçmişte `2b78348` |
+| Azure | Tamamen kaldır | ✅ `azureTts.ts` silindi; tip, merdiven, `/api/tts`, UI etiketi, env ve dokümandan söküldü |
 | Gemini TTS | Menüden çıkar, modül parkta | ✅ |
-| Sahne kartı | Önce tarayıcıda 30 sn doğrulama; 402/401 ise gizle | ⏳ Emre'nin doğrulaması |
+| Sahne kartı | Önce tarayıcıda 30 sn doğrulama; 402/401 ise gizle | ✅ Doğrulandı: çalışıyor → kart kalıyor |
 | Sentiment eşikleri | Ölçmeden değiştirme; yumuşama formlarını ölçümle birlikte ekle | ✅ Formlar + `npm run sentiment:compare`; eşikler aynı |
-| `ajan-503-fix-backup` + stash | Bak, 503 düzeltmesiyse sil | ⏳ Yerel makinede |
+| `ajan-503-fix-backup` + stash | Önce arşivle (patch), sonra sil | ⏳ Yalnız Emre'nin makinesinde — bulut oturumu erişemez; tek blokluk komut verildi |
 
 ### Karar öncesi seçenekler (kayıt)
 
