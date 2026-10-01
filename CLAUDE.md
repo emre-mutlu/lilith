@@ -9,7 +9,7 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
 | Build | Vite 8 / Rolldown (middleware mode in dev) |
 | Backend | Express 5 + TypeScript 7 (`server/index.ts`) |
-| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS: **Fish Audio** default (`s2.1-pro-free`, bulut) → Chatterbox yerel fallback (bağlıysa) → tarayıcı · Azure/Edge/Gemini-TTS PARK'ta veya kaldırıldı (08-24) |
+| AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS: **Fish Audio** default (`s2.1-pro-free`, bulut) → Chatterbox yerel fallback (bağlıysa) → tarayıcı · Edge (08-24) ve Azure (10-01) kaldırıldı · Gemini-TTS parkta |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
 ## First-time setup
@@ -28,9 +28,6 @@ npm run dev                # http://localhost:3000
 | `GEMINI_MODEL` | No | Text model. Default `gemini-3.5-flash-lite` (pinned). Not: 2.5-flash çok yavaş (5.1s); 3.7-flash yük altında (503) |
 | `GEMINI_FALLBACK_MODELS` | No | Virgüllü yedek model zinciri — **yalnız 503'te**, birincil 2s/5s kısa denemelerden sonra da düşerse. **Default açık** (Emre 10-01): `gemini-3.6-flash,gemini-2.5-flash`; kapatmak `off`. Her istek yine pinli modelle başlar. Replik başına model `sessions/*.jsonl`'e yazılır — üslup kayması oradan ölçülür |
 | `GEMINI_HISTORY` | No | Geçmiş penceresi, mesaj adedi. Default 20 |
-| `AZURE_SPEECH_KEY` | No | ⚠ **PARK (08-24, Emre kararı: Azure kullanılmayacak).** Kod duruyor; key ayarlı değilse katman zaten atlanır |
-| `AZURE_SPEECH_REGION` | No | Default `westeurope` (park halinde) |
-| `AZURE_VOICE_LILITH` / `AZURE_VOICE_GENERIC` | No | Multilingual ses override. Default: Ava / Andrew (park halinde) |
 | `FISH_MODEL_LILITH` / `FISH_MODEL_GENERIC` | No | Fish Audio kütüphane ses ID'leri (`.env` — gizli değil). Kozmetik değişim buradan |
 | `FISH_LATENCY` | No | Fish üretim modu: `normal` (default, kararlı) / `balanced` (interaktif, ~%40 hızlı) |
 | `CHATTERBOX_PYTHON` | No | Chatterbox venv python yolu → yerel TTS servisi (port 8777). **Açılışta ısınmaz** — yalnız kullanıcı yerel motoru seçince ilk istekte başlar; kapanışta çocuğu öldürülür. Ayarsızsa katman atlanır |
@@ -54,7 +51,6 @@ server/
   director.ts       Senaryo sistemi: 24 eğilim + yay/tür/tempo eksenleri, prelüd şeması + doğrulama
   fishTts.ts        Fish Audio bulut katmanı (s2.1-pro-free)
   geminiTts.ts      Gemini TTS katmanı (parkta, kota ~10/gün; 10-01'den beri UI menüsünde YOK, API'de var) + casting aday listesi
-  azureTts.ts       Azure Speech katmanı (PARK — key ayarsızsa atlanır)
   localTts.ts       Chatterbox istemcisi: sağlık-cache, spawn/ısınma/temiz kapanış
   fishText.ts       prepareFishText — yalnız duygu etiketi ([emphasis]/[soft tone]); yapay duraksama YOK
   ttsText.ts        dramatizeForTts (… duraksamaları — artık SADECE Chatterbox) + intensityToExaggeration
@@ -154,5 +150,5 @@ npm run typecheck # tsc --noEmit
 
 - **Prosedürel ambient** (`src/lib/ambient.ts` + saf eşleme `ambientParams.ts`): Web Audio drone+hava; sentiment'ten mood sürer (brightness=percent, tension=baskın konuşan+tırmanış eğimi+high-intensity dalgası). Zincir: `kaynaklar → preFx → [dry | convolver→wet] → level → duck → çıkış`.
   **09-01 revizyonu:** taban seviye 0.85→**0.30** + replik boyunca **ducking** (0.45×, `setDucked`) — konuşmayla yarışıyordu. **Değişken yankı**: prosedürel impulse response (üstel sönümlü gürültü, dosya yok), wet oranı gerilimle 0.10→0.50. Kompleksite: zıt yönde dolaşan stereo panorama, gerilimle E3↔F3 arası kayan üst katman, 9-26sn arası seyrek shimmer tonları (yankıya düşer). **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
-- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz — ⚠ 10-01: anonim uç 402/401 dönüyor raporu, sağlayıcı kararı açık; yüklenemezse kart "SAHNE YOK" gösterir) ile senaryo eksenlerinden prompt kurup görsel üretir; footer sol hücresine yerleşik (kart + ambiyans rayı, SimParameters yanında), ↻ yeni seed. İnce tasarım sonraya — Emre kararı açık.
+- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz — 10-01: dış rapor 402 dedi, Emre tarayıcıda doğruladı: **çalışıyor**; yüklenemezse kart "SAHNE YOK" gösterir) ile senaryo eksenlerinden prompt kurup görsel üretir; footer sol hücresine yerleşik (kart + ambiyans rayı, SimParameters yanında), ↻ yeni seed. İnce tasarım sonraya — Emre kararı açık.
 - Gemini görsel (`gemini-3.1-flash-image`, `nano-banana-pro-preview`) + Lyria: free kota dar (429) → parkta. Pollinations latency 2-35sn oynak.

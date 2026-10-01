@@ -7,9 +7,8 @@ interface Props {
 
 // Şimdilik "görülebilir bir yerde dursun" kararı — tasarım kararı gelince yeri değişir.
 // Görsel Pollinations (key'siz, ücretsiz); senaryo eksenleri prompt'a sinir.
-// ⚠ 10-01: anonim uç 402/401 dönüyor raporu var (ödeme/anahtar düzenine geçmiş
-// görünüyor) — sağlayıcı kararı Emre'de. Yüklenemezse kart sonsuz "SAHNE…"de
-// kalmasın diye hata durumu gösterilir.
+// 10-01: dış rapor anonim ucun 402 döndüğünü söyledi; Emre tarayıcıda doğruladı —
+// çalışıyor. Yine de yüklenemezse kart sonsuz "SAHNE…"de kalmasın: hata durumu.
 export default function SceneCard({ scenario }: Props) {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e6))
   const [loaded, setLoaded] = useState(false)

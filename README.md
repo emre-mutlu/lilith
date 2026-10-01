@@ -60,7 +60,6 @@ Footer "Simulation Parameters" paneli sahte sayı göstermez: son tur / ortalama
 | `LOCAL_TTS_EXAGGERATION` | — | Default 1.2 (beat intensity override eder) |
 | `LOCAL_TTS_DRAMATIZE` | — | `1` (default): Chatterbox metnine dramatik `…` duraksamaları |
 | `LOCAL_TTS_SPEAKERS` | — | Yerel motorun konuştuğu karakterler (default `lilith,generic`) |
-| `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` | — | Ayarsızsa Azure katmanı atlanır |
 | `PORT` | — | Default 3000 |
 
 ## Komutlar
