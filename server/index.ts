@@ -15,7 +15,6 @@ import { runTtsLadder } from './ttsLadder.js'
 import { intensityToExaggeration } from './ttsText.js'
 import { generateFishTts } from './fishTts.js'
 import { generateGeminiTts } from './geminiTts.js'
-import { generateAzureTts } from './azureTts.js'
 import { generateLocalTts, localTtsStatus } from './localTts.js'
 import { GoogleGenAI } from '@google/genai'
 
@@ -23,7 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? ''
-// ── Gemini TTS → server/geminiTts.ts · Azure → azureTts.ts · Fish → fishTts.ts
+// ── Gemini TTS → server/geminiTts.ts · Fish → fishTts.ts
 // ── Chatterbox yerel TTS → server/localTts.ts · diyalog çekirdeği → dialogue.ts
 
 // ── JSONL tur-logu (yalnız metin — ses loglanmaz) ────────────────────────────
@@ -91,7 +90,7 @@ async function main() {
       const { speaker, history = [], ttsEngine = 'fish', scenario, sessionId } = req.body as {
         speaker: TtsSpeaker
         history: Message[]
-        ttsEngine: 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
+        ttsEngine: 'browser' | 'gemini' | 'local' | 'fish'
       scenario?: ScenarioPrelude
       sessionId?: string
     }
@@ -120,11 +119,10 @@ async function main() {
 
       // Merdiven (server/ttsLadder.ts): fish -> local (ayaktaysa) -> none; istemci
       // none'da tarayıcı TTS'e düşer. Yerel motora beat-intensity kalibrasyonu
-      // geçer (0.8 / 1.2 / 1.7). Edge kaldırıldı (08-24); gemini/azure parkta.
+      // geçer (0.8 / 1.2 / 1.7). Edge (08-24) ve Azure (10-01) kaldırıldı; gemini parkta.
       const { result: ttsResult, servedBy } = await runTtsLadder(ttsEngine, {
         fish: () => generateFishTts(beat.text, speaker, beat.intensity),
         gemini: () => generateGeminiTts(beat.text, speaker),
-        azure: () => generateAzureTts(beat.text, speaker),
         local: ({ spawn }) => generateLocalTts(beat.text, speaker, intensityToExaggeration(beat.intensity), { spawn }),
       })
       return res.json({
@@ -152,7 +150,7 @@ async function main() {
     const { text, speaker, engine = 'fish', voice, style, exaggeration } = req.body as {
       text: string
       speaker: TtsSpeaker
-      engine?: 'gemini' | 'azure' | 'local' | 'fish'
+      engine?: 'gemini' | 'local' | 'fish'
       voice?: string
       style?: string
       exaggeration?: number
@@ -165,9 +163,7 @@ async function main() {
       const result = engine === 'fish'
         ? await generateFishTts(text, speaker)
         : engine === 'gemini'
-        ? await generateGeminiTts(text, speaker, { voice, style })
-        : engine === 'azure'
-          ? await generateAzureTts(text, speaker, { voice, style })
+          ? await generateGeminiTts(text, speaker, { voice, style })
           : engine === 'local'
             ? await generateLocalTts(text, speaker, exaggeration)
             : null

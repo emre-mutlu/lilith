@@ -4,11 +4,10 @@ import { runTtsLadder, type TtsLayers, type TtsAudio } from './ttsLadder'
 const AUDIO: TtsAudio = { audio: 'AAAA', mimeType: 'audio/wav' }
 
 /** Sahte katmanlar: hangisi ses verir, hangisi düşer; çağrılar kaydedilir. */
-function layers(ok: Partial<Record<'fish' | 'gemini' | 'azure' | 'local', boolean>>) {
+function layers(ok: Partial<Record<'fish' | 'gemini' | 'local', boolean>>) {
   const l = {
     fish: vi.fn(async () => (ok.fish ? AUDIO : null)),
     gemini: vi.fn(async () => (ok.gemini ? AUDIO : null)),
-    azure: vi.fn(async () => (ok.azure ? AUDIO : null)),
     local: vi.fn(async (_: { spawn: boolean }) => (ok.local ? AUDIO : null)),
   }
   return l satisfies TtsLayers
@@ -45,9 +44,9 @@ describe('runTtsLadder', () => {
     expect(l.fish).not.toHaveBeenCalled()
   })
 
-  it('azure (parkta) yalnız kendini dener', async () => {
-    const l = layers({ azure: false, local: true })
-    expect(await runTtsLadder('azure', l)).toEqual({ result: null, servedBy: 'none' })
+  it("kaldırılan azure motoru (eski istemci) hiçbir katmanı çağırmaz", async () => {
+    const l = layers({ fish: true, local: true })
+    expect(await runTtsLadder('azure' as never, l)).toEqual({ result: null, servedBy: 'none' })
     expect(l.local).not.toHaveBeenCalled()
   })
 
