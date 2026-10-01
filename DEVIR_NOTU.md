@@ -4,11 +4,11 @@
 
 ## 10-01 · Dış rapor doğrulaması + iyileştirme turu
 - `cline/f61e1` dalındaki iki rapor (inceleme + prune) iddia iddia doğrulandı → **`DOGRULAMA_2026-10-01.md`** (hüküm tablosu + spec + açık kararlar).
-- Uygulandı: TTS merdiveni `fish → local (yalnız ayaktaysa, spawn yok) → none` (`server/ttsLadder.ts`); tek katmanlı retry (429 35s×2, **503 2s/5s**), çift sarma kalktı; opsiyonel yedek model zinciri (`GEMINI_FALLBACK_MODELS`, **default kapalı**) + jsonl'de replik başına `model`; sentiment kelime-sınırlı Türkçe kalıplar + test; SceneCard hata durumu; ErrorBoundary; env boş-satır varsayılanları (`||`); `qs` açığı. Test 45 → 75.
+- Uygulandı: TTS merdiveni `fish → local (yalnız ayaktaysa, spawn yok) → none` (`server/ttsLadder.ts`); tek katmanlı retry (429 35s×2, **503 2s/5s**), çift sarma kalktı; yedek model zinciri (`GEMINI_FALLBACK_MODELS`; ilk turda kapalı, aynı gün kararla **açıldı**) + jsonl'de replik başına `model`; sentiment kelime-sınırlı Türkçe kalıplar + test; SceneCard hata durumu; ErrorBoundary; env boş-satır varsayılanları (`||`); `qs` açığı. Test 45 → 75.
 - Raporun yanlışları: Fish'te timeout var; sentiment Chatterbox abartısını sürmez; `\b` Türkçe'de bozuk; önerilen merdiven düzeltmesi Chatterbox'ı spawn ederdi.
 - **Kararlar (Emre, 10-01 — "hepsi ok"):** yedek model zinciri **açıldı** (default `gemini-3.6-flash,gemini-2.5-flash`, kapatmak `off`) · Gemini TTS **menüden çıktı** (modül parkta) · sentiment'e ünsüz yumuşaması/ünlü düşmesi formları + **`npm run sentiment:compare`** (eşik kararı gerçek loglarla verilecek, eşikler değişmedi).
 - **İkinci tur (Emre izniyle):** `project/` silindi; Azure tamamen söküldü (`azureTts.ts`, `VoiceEngine`, merdiven, `/api/tts`, UI, env). Pollinations Emre'nin tarayıcısında **çalışıyor** → sahne kartı kalıyor (raporun 402 iddiası onun ortamında geçersiz).
-- **Bekleyen (yalnız yerel makinede):** `cline/f61e1` dalı (bulut oturumundan uzaktan silme 403) + worktree, `ajan-503-fix-backup` + stash'ler — önce `~/Documents/Claude/arsiv/lilith-eser/2026-10-01-temizlik/`'e patch olarak arşivlenip sonra silinecek.
+- **Bekleyen (yalnız yerel makinede):** `cline/f61e1` dalı (bulut oturumundan uzaktan silme 403) + worktree, `ajan-503-fix-backup` + stash'ler — önce `~/Documents/Claude/arsiv/lilith-eser/2026-10-01-temizlik/`'e patch olarak arşivlenip sonra silinecek. **Talimat: `YEREL_TEMIZLIK.md`** (yerel oturum uygular, bitince dosyayı siler).
 - **Sıradaki ölçüm:** birkaç oturumdan sonra `npm run sentiment:compare` → eşik kararı; jsonl `model` alanından yedek model sıklığı + kulakla üslup kontrolü.
 
 ## 09-24 · Gemini 503 — KAPANDI (10-01): retry 2s/5s + yedek model zinciri açık
@@ -18,7 +18,7 @@
 - **Önerilen düzeltme (Emre onayı bekliyor, dal+PR):** (1) 503'te kısa geri çekilmeli yeniden deneme (~2s, ~5s); (2) yalnız o da düşerse yedek model (3.6-flash ↔ 3.5-flash-lite, 2.5-flash sonda); (3) `sessions/*.jsonl`'e replik başına model kaydı. Sohbet kopmaz (sunucu durumsuz: history+scenario+pin her istekte istemciden) ama **üslup kayması** riski var — ölçülmedi.
 
 ## Durum
-Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) canlı. TTS merdiveni: fish → local (Chatterbox) → tarayıcı; Azure/Gemini-TTS parkta. İlke: tamamen ücretsiz katmanlar (Emre, 08-24).
+Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) canlı. TTS merdiveni: fish → local (Chatterbox, yalnız ayaktaysa) → tarayıcı; Azure kaldırıldı (10-01), Gemini-TTS parkta. İlke: tamamen ücretsiz katmanlar (Emre, 08-24).
 
 ## Kaldığın yer (08-25 kod-incelemesi + hijyen oturumu)
 - **Monolit dağıtıldı:** `server/index.ts` 680→224 satır. TTS katmanları `server/{fish,gemini,azure,local}Tts.ts`, diyalog çekirdeği `server/dialogue.ts`'e taşındı; index.ts route+merdiven katmanı.
