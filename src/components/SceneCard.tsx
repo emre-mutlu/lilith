@@ -7,9 +7,13 @@ interface Props {
 
 // Şimdilik "görülebilir bir yerde dursun" kararı — tasarım kararı gelince yeri değişir.
 // Görsel Pollinations (key'siz, ücretsiz); senaryo eksenleri prompt'a sinir.
+// ⚠ 10-01: anonim uç 402/401 dönüyor raporu var (ödeme/anahtar düzenine geçmiş
+// görünüyor) — sağlayıcı kararı Emre'de. Yüklenemezse kart sonsuz "SAHNE…"de
+// kalmasın diye hata durumu gösterilir.
 export default function SceneCard({ scenario }: Props) {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e6))
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   const url = useMemo(() => {
     const doku = scenario?.tur_doku ?? 'gerilim'
@@ -34,6 +38,7 @@ export default function SceneCard({ scenario }: Props) {
           src={url}
           alt="sahne"
           onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
           style={{
             display: 'block', width: 150, height: 150, objectFit: 'cover',
             opacity: loaded ? 0.85 : 0, transition: 'opacity 1s ease', cursor: 'zoom-in',
@@ -43,12 +48,12 @@ export default function SceneCard({ scenario }: Props) {
       {!loaded && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: '0.15em', color: 'rgba(212,175,55,0.5)' }}>
-          SAHNE…
+          {failed ? 'SAHNE YOK' : 'SAHNE…'}
         </div>
       )}
       <button
         title="Yeni sahne üret"
-        onClick={e => { e.preventDefault(); setLoaded(false); setSeed(Math.floor(Math.random() * 1e6)) }}
+        onClick={e => { e.preventDefault(); setLoaded(false); setFailed(false); setSeed(Math.floor(Math.random() * 1e6)) }}
         style={{
           position: 'absolute', top: 4, right: 4, width: 20, height: 20,
           borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
