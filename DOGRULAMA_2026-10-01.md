@@ -83,7 +83,7 @@ Sonuç: **75/75 test** (45 → 75), typecheck temiz, build 196.69 kB / 62.00 kB 
 | Gemini TTS | Menüden çıkar, modül parkta | ✅ |
 | Sahne kartı | Önce tarayıcıda 30 sn doğrulama; 402/401 ise gizle | ✅ Doğrulandı: çalışıyor → kart kalıyor |
 | Sentiment eşikleri | Ölçmeden değiştirme; yumuşama formlarını ölçümle birlikte ekle | ✅ Formlar + `npm run sentiment:compare`; eşikler aynı |
-| `ajan-503-fix-backup` + stash | Önce arşivle (patch), sonra sil | ⏳ Yalnız Emre'nin makinesinde — bulut oturumu erişemez; tek blokluk komut verildi |
+| `ajan-503-fix-backup` + stash | Önce arşivle (patch), sonra sil | ✅ Yerel oturum uyguladı: `cline/f61e1` (yerel + uzak + worktree) arşivlenip silindi; ajan dalı ve stash'ler zaten yoktu |
 
 ### Karar öncesi seçenekler (kayıt)
 
