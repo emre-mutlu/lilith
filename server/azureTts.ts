@@ -6,11 +6,11 @@
 import type { TtsSpeaker } from '../shared/types'
 
 const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY ?? ''
-const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION ?? 'westeurope'
+const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || 'westeurope'
 // Sesler env ile değiştirilebilir — dinleme/karar sonrası koda dokunmadan oynanabilir.
 const AZURE_VOICES: Record<TtsSpeaker, { voice: string; style?: string }> = {
-  lilith:  { voice: process.env.AZURE_VOICE_LILITH  ?? 'en-US-AvaMultilingualNeural' },
-  generic: { voice: process.env.AZURE_VOICE_GENERIC ?? 'en-US-AndrewMultilingualNeural' },
+  lilith:  { voice: process.env.AZURE_VOICE_LILITH  || 'en-US-AvaMultilingualNeural' },
+  generic: { voice: process.env.AZURE_VOICE_GENERIC || 'en-US-AndrewMultilingualNeural' },
 }
 
 function escapeXml(s: string): string {

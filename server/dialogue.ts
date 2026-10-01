@@ -16,10 +16,17 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? ''
 // Varsayılan: gemini-3.5-flash-lite (ölçüm 2026-08-22: 735ms, tını kulakla onaylı).
 // Eski: gemini-3.1-flash-lite (844ms). 2.5-flash çok yavaş (5145ms) — aday değil.
 // 3.7-flash yeni çıktığından yük altında (503) — izleniyor.
-export const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite'
+// `||` (?? değil): --env-file boş satırı '' yapar; .env.example'dan kopyalanan
+// `GEMINI_MODEL=` de varsayılana düşmeli (server/ genelinde aynı kural).
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
+// Yedek model zinciri — YALNIZ 503'te, birincil kısa denemelerden sonra da düşerse.
+// Varsayılan BOŞ: pin stratejisi korunur, üslup kayması ölçülmedi (DEVIR_NOTU 09-24).
+// Açmak için .env: GEMINI_FALLBACK_MODELS=gemini-3.6-flash,gemini-2.5-flash
+export const GEMINI_FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS ?? '')
+  .split(',').map(s => s.trim()).filter(Boolean)
 // Geçmiş penceresi — kayan pencere boyutu (mesaj adedi). Faz 2'de 12/20/30 A/B
 // ölçümü yapılacak; varsayılan 20 (eski sabit 12 prototipten kalma, hiç ölçülmemişti).
-const HISTORY_WINDOW = parseInt(process.env.GEMINI_HISTORY ?? '20', 10)
+const HISTORY_WINDOW = parseInt(process.env.GEMINI_HISTORY || '20', 10)
 
 export const SYSTEM_INSTRUCTIONS: Record<string, string> = {
   lilith: `Sen Kraliçe Lilith'sin.
@@ -64,28 +71,86 @@ export function stripPrefix(text: string): string {
   return out.replace(/^["'`]+|["'`]+$/g, '').trim()
 }
 
-function isRateLimit(err: unknown): boolean {
+// ── Yeniden deneme politikası ───────────────────────────────────────────────
+// 429 (kota/dakika penceresi): pencere dolana kadar uzun bekle.
+// 503 ("high demand", model aşırı yükte): kısa geri çekilme — yük saniyeler
+// içinde modeller arasında dolaşıyor (09-24 ölçümü). Diğer hatalar denenmez.
+// Tek katman: generateText kendi içinde sarar; route'lar bir daha SARMAZ
+// (eski çift sarma 429'da 9 deneme / ~280 sn kilitlenme yapıyordu).
+export type RetryKind = 'rate' | 'overload'
+
+export function retryKind(err: unknown): RetryKind | null {
+  // SDK ApiError'da HTTP kodu `status`'ta — varsa tek ölçüt o (400 gövdesinde
+  // "unavailable" geçiyor diye yeniden denenmesin); yoksa mesaja bakılır.
+  const status = (err as { status?: unknown } | null)?.status
+  if (typeof status === 'number') return status === 429 ? 'rate' : status === 503 ? 'overload' : null
   const msg = err instanceof Error ? err.message : String(err)
-  return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')
+  if (/\b429\b|RESOURCE_EXHAUSTED/.test(msg)) return 'rate'
+  if (/\b503\b|UNAVAILABLE|overloaded|high demand/i.test(msg)) return 'overload'
+  return null
 }
 
-export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 35000): Promise<T> {
-  try {
-    return await fn()
-  } catch (err) {
-    if (isRateLimit(err) && retries > 0) {
-      console.warn(`Rate limit — ${delayMs / 1000}s sonra tekrar denenecek.`)
-      await new Promise(r => setTimeout(r, delayMs))
-      return withRetry(fn, retries - 1, delayMs)
+export interface RetryPolicy {
+  /** Her eleman bir yeniden deneme öncesi bekleme (ms) */
+  rateDelaysMs: number[]
+  overloadDelaysMs: number[]
+}
+
+export const DEFAULT_RETRY: RetryPolicy = {
+  rateDelaysMs: [35_000, 35_000],
+  overloadDelaysMs: [2_000, 5_000],
+}
+
+const realWait = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  policy: RetryPolicy = DEFAULT_RETRY,
+  wait: (ms: number) => Promise<void> = realWait,
+): Promise<T> {
+  const used: Record<RetryKind, number> = { rate: 0, overload: 0 }
+  for (;;) {
+    try {
+      return await fn()
+    } catch (err) {
+      const kind = retryKind(err)
+      if (!kind) throw err
+      const delays = kind === 'rate' ? policy.rateDelaysMs : policy.overloadDelaysMs
+      if (used[kind] >= delays.length) throw err
+      const ms = delays[used[kind]++]
+      console.warn(`${kind === 'rate' ? 'Rate limit (429)' : 'Model yükte (503)'} — ${ms / 1000}s sonra tekrar denenecek.`)
+      await wait(ms)
     }
-    throw err
   }
 }
+
+/** Model zinciri: her model kendi withRetry'ı ile denenir; yalnız 503 bir
+ *  sonrakine geçirir (429 kota hatası, başka modele kaçarak çözülmez). */
+export async function withModelFallback<T>(
+  models: string[],
+  call: (model: string) => Promise<T>,
+  policy: RetryPolicy = DEFAULT_RETRY,
+  wait: (ms: number) => Promise<void> = realWait,
+): Promise<{ result: T; model: string }> {
+  const chain = [...new Set(models.filter(Boolean))]
+  for (let i = 0; ; i++) {
+    try {
+      return { result: await withRetry(() => call(chain[i]), policy, wait), model: chain[i] }
+    } catch (err) {
+      if (i + 1 >= chain.length || retryKind(err) !== 'overload') throw err
+      console.warn(`${chain[i]} yükte — yedek model ${chain[i + 1]} deneniyor.`)
+    }
+  }
+}
+
+export const GEMINI_MODEL_CHAIN = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
 
 export interface Beat {
   text: string
   mood: string
   intensity: SentimentIntensity
+  /** Repliği gerçekten üreten model (yedek zincir devreye girdiyse farklıdır) */
+  model: string
 }
 
 const BEAT_SCHEMA = {
@@ -145,8 +210,8 @@ export async function generateText(
   }
   systemInstruction += stageStateBlock(history) + directorNotesBlock(history)
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model: GEMINI_MODEL,
+  const { result: response, model } = await withModelFallback(GEMINI_MODEL_CHAIN, m => ai.models.generateContent({
+    model: m,
     contents: roleContents(speaker, history),
     config: {
       temperature: 0.85,
@@ -168,10 +233,11 @@ export async function generateText(
       mood: String(parsed.mood ?? ''),
       intensity: (['low', 'mid', 'high'].includes(String(parsed.intensity))
         ? parsed.intensity : 'mid') as SentimentIntensity,
+      model,
     }
   } catch {
     const text = stripPrefix(raw)
     if (!text) throw new Error('Boş yanıt alındı.')
-    return { text, mood: '', intensity: 'mid' }
+    return { text, mood: '', intensity: 'mid', model }
   }
 }

@@ -10,9 +10,9 @@ import type { TtsSpeaker } from '../shared/types'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const CHATTERBOX_PYTHON = process.env.CHATTERBOX_PYTHON ?? ''
-const LOCAL_TTS_EXAGGERATION = parseFloat(process.env.LOCAL_TTS_EXAGGERATION ?? '1.2')
-const LOCAL_TTS_DRAMATIZE = (process.env.LOCAL_TTS_DRAMATIZE ?? '1') === '1'
-const LOCAL_TTS_SPEAKERS = (process.env.LOCAL_TTS_SPEAKERS ?? 'lilith,generic').split(',')
+const LOCAL_TTS_EXAGGERATION = parseFloat(process.env.LOCAL_TTS_EXAGGERATION || '1.2')
+const LOCAL_TTS_DRAMATIZE = (process.env.LOCAL_TTS_DRAMATIZE || '1') === '1'
+const LOCAL_TTS_SPEAKERS = (process.env.LOCAL_TTS_SPEAKERS || 'lilith,generic').split(',')
 // Kişi-bazlı referans klip = ses kimliği (assets/voices altında)
 // Kişi-bazlı yerel TTS profili: ref = ses kimliği, cfg = ref'e sadakat (casting 08-23)
 // Lilith: FR tınısı, cfg 0.3 (kimlik güçlü) · Varlık: IT tınısı, cfg 0.1 (aksan-bastırık)
@@ -33,10 +33,12 @@ async function healthCheck(): Promise<boolean> {
   } catch { return false }
 }
 
-async function ensureLocalService(): Promise<boolean> {
+/** allowSpawn=false → yalnız zaten ayaktaysa evet der; servisi başlatmaz.
+ *  Yedek-katman kullanımı içindir (Chatterbox yalnız seçilince ısınır — 08-25). */
+async function ensureLocalService(allowSpawn = true): Promise<boolean> {
   if (Date.now() < localAvailableUntil) return true
   if (await healthCheck()) { localAvailableUntil = Date.now() + 30_000; return true }
-  if (!CHATTERBOX_PYTHON) return false
+  if (!allowSpawn || !CHATTERBOX_PYTHON) return false
   if (!localProc) {
     console.log('[local-tts] servis başlatılıyor...')
     localWarming = true
@@ -68,9 +70,14 @@ process.on('exit', killLocalProc)
 process.on('SIGINT', () => { killLocalProc(); process.exit(0) })
 process.on('SIGTERM', () => { killLocalProc(); process.exit(0) })
 
-export async function generateLocalTts(text: string, speaker: TtsSpeaker, exaggerationOverride?: number): Promise<{ audio: string; mimeType: string } | null> {
+export async function generateLocalTts(
+  text: string,
+  speaker: TtsSpeaker,
+  exaggerationOverride?: number,
+  { spawn: allowSpawn = true }: { spawn?: boolean } = {},
+): Promise<{ audio: string; mimeType: string } | null> {
   if (!LOCAL_TTS_SPEAKERS.includes(speaker)) return null
-  if (!(await ensureLocalService())) return null
+  if (!(await ensureLocalService(allowSpawn))) return null
   try {
     const ttsText = LOCAL_TTS_DRAMATIZE ? dramatizeForTts(text) : text
     const r = await fetch(`${LOCAL_TTS_URL}/tts`, {

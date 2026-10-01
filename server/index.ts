@@ -10,7 +10,8 @@ import {
 } from './director.js'
 import type { ScenarioPrelude } from './director.js'
 import type { Message, TtsSpeaker } from '../shared/types'
-import { generateText, GEMINI_MODEL, withRetry } from './dialogue.js'
+import { generateText, GEMINI_MODEL_CHAIN, withModelFallback } from './dialogue.js'
+import { runTtsLadder } from './ttsLadder.js'
 import { intensityToExaggeration } from './ttsText.js'
 import { generateFishTts } from './fishTts.js'
 import { generateGeminiTts } from './geminiTts.js'
@@ -20,7 +21,7 @@ import { GoogleGenAI } from '@google/genai'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
-const PORT = parseInt(process.env.PORT ?? '3000', 10)
+const PORT = parseInt(process.env.PORT || '3000', 10)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? ''
 // ── Gemini TTS → server/geminiTts.ts · Azure → azureTts.ts · Fish → fishTts.ts
 // ── Chatterbox yerel TTS → server/localTts.ts · diyalog çekirdeği → dialogue.ts
@@ -64,8 +65,8 @@ async function main() {
     if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY yok.' })
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
-      const response = await withRetry(() => ai.models.generateContent({
-        model: GEMINI_MODEL,
+      const { result: response, model } = await withModelFallback(GEMINI_MODEL_CHAIN, m => ai.models.generateContent({
+        model: m,
         contents: directorInstruction(),
         config: {
           temperature: 1.0,
@@ -78,7 +79,7 @@ async function main() {
       const parsed: unknown = JSON.parse(raw)
       if (!validatePrelude(parsed)) throw new Error('prelüd doğrulamayı geçemedi')
       const sessionId = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
-      console.log(`[director] yeni oturum ${sessionId}: ${parsed.lilith_egilimi} · ${parsed.tur_doku}`)
+      console.log(`[director] yeni oturum ${sessionId}: ${parsed.lilith_egilimi} · ${parsed.tur_doku} (${model})`)
       return res.json({ sessionId, scenario: parsed })
     } catch (err) {
       console.error('/api/director error:', err instanceof Error ? err.message : err)
@@ -104,42 +105,28 @@ async function main() {
 
     try {
       const t0 = Date.now()
-      const beat = await withRetry(() => generateText(speaker, history, validatePrelude(scenario) ? scenario : undefined))
+      // Yeniden deneme generateText'in içinde (tek katman) — burada tekrar sarılmaz
+      const beat = await generateText(speaker, history, validatePrelude(scenario) ? scenario : undefined)
       if (!beat.text) return res.status(500).json({ error: 'Boş yanıt alındı.' })
 
       appendTurnLog(sessionId, {
         speaker, text: beat.text, mood: beat.mood, intensity: beat.intensity,
-        latency_ms: Date.now() - t0,
+        model: beat.model, latency_ms: Date.now() - t0,
       })
 
       if (ttsEngine === 'browser') {
         return res.json({ text: beat.text, mood: beat.mood, intensity: beat.intensity, engine: 'browser', latencyMs: Date.now() - t0 })
       }
 
-      // Merdiven: fish -> local -> none (istemci tarayıcı TTS'e düşer).
-      // Edge kaldırıldı (08-24); gemini/azure parkta, key'siz atlanır.
-      // Yerel motora beat-intensity kalibrasyonu geçer (0.8 / 1.2 / 1.7)
-      let ttsResult: { audio: string; mimeType: string } | null = null
-      let servedBy: 'fish' | 'gemini' | 'local' | 'azure' | 'none' = 'none'
-      if (ttsEngine === 'fish') {
-        ttsResult = await generateFishTts(beat.text, speaker, beat.intensity)
-        if (ttsResult) servedBy = 'fish'
-        else console.warn('Fish TTS düştü — local fallback')
-      }
-      if (!ttsResult && ttsEngine === 'gemini') {
-        ttsResult = await generateGeminiTts(beat.text, speaker)
-        if (ttsResult) servedBy = 'gemini'
-        else console.warn('Gemini TTS düştü — local fallback')
-      }
-      if (!ttsResult && (ttsEngine === 'local' || ttsEngine === 'gemini')) {
-        ttsResult = await generateLocalTts(beat.text, speaker, intensityToExaggeration(beat.intensity))
-        if (ttsResult) servedBy = 'local'
-        else if (ttsEngine === 'local') console.warn('Local TTS düştü — istemci tarayıcı TTS\'e düşecek')
-      }
-      if (!ttsResult && ttsEngine === 'azure') {
-        ttsResult = await generateAzureTts(beat.text, speaker)
-        if (ttsResult) servedBy = 'azure'
-      }
+      // Merdiven (server/ttsLadder.ts): fish -> local (ayaktaysa) -> none; istemci
+      // none'da tarayıcı TTS'e düşer. Yerel motora beat-intensity kalibrasyonu
+      // geçer (0.8 / 1.2 / 1.7). Edge kaldırıldı (08-24); gemini/azure parkta.
+      const { result: ttsResult, servedBy } = await runTtsLadder(ttsEngine, {
+        fish: () => generateFishTts(beat.text, speaker, beat.intensity),
+        gemini: () => generateGeminiTts(beat.text, speaker),
+        azure: () => generateAzureTts(beat.text, speaker),
+        local: ({ spawn }) => generateLocalTts(beat.text, speaker, intensityToExaggeration(beat.intensity), { spawn }),
+      })
       return res.json({
         text: beat.text,
         mood: beat.mood,
