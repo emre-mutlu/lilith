@@ -26,7 +26,7 @@ npm run dev                # http://localhost:3000
 |----------|----------|-------|
 | `GEMINI_API_KEY` | Yes | Gemini text generation |
 | `GEMINI_MODEL` | No | Text model. Default `gemini-3.5-flash-lite` (pinned). Not: 2.5-flash çok yavaş (5.1s); 3.7-flash yük altında (503) |
-| `GEMINI_FALLBACK_MODELS` | No | Virgüllü yedek model zinciri — **yalnız 503'te**, birincil 2s/5s kısa denemelerden sonra da düşerse. Default boş = kapalı (pin korunur; üslup kayması ölçülmedi). Replik başına model `sessions/*.jsonl`'e yazılır |
+| `GEMINI_FALLBACK_MODELS` | No | Virgüllü yedek model zinciri — **yalnız 503'te**, birincil 2s/5s kısa denemelerden sonra da düşerse. **Default açık** (Emre 10-01): `gemini-3.6-flash,gemini-2.5-flash`; kapatmak `off`. Her istek yine pinli modelle başlar. Replik başına model `sessions/*.jsonl`'e yazılır — üslup kayması oradan ölçülür |
 | `GEMINI_HISTORY` | No | Geçmiş penceresi, mesaj adedi. Default 20 |
 | `AZURE_SPEECH_KEY` | No | ⚠ **PARK (08-24, Emre kararı: Azure kullanılmayacak).** Kod duruyor; key ayarlı değilse katman zaten atlanır |
 | `AZURE_SPEECH_REGION` | No | Default `westeurope` (park halinde) |
@@ -53,13 +53,15 @@ server/
                     withRetry (429 uzun / 503 kısa) + withModelFallback — TEK katman, route'lar sarmaz
   director.ts       Senaryo sistemi: 24 eğilim + yay/tür/tempo eksenleri, prelüd şeması + doğrulama
   fishTts.ts        Fish Audio bulut katmanı (s2.1-pro-free)
-  geminiTts.ts      Gemini TTS katmanı (parkta, kota düşük) + casting aday listesi
+  geminiTts.ts      Gemini TTS katmanı (parkta, kota ~10/gün; 10-01'den beri UI menüsünde YOK, API'de var) + casting aday listesi
   azureTts.ts       Azure Speech katmanı (PARK — key ayarsızsa atlanır)
   localTts.ts       Chatterbox istemcisi: sağlık-cache, spawn/ısınma/temiz kapanış
   fishText.ts       prepareFishText — yalnız duygu etiketi ([emphasis]/[soft tone]); yapay duraksama YOK
   ttsText.ts        dramatizeForTts (… duraksamaları — artık SADECE Chatterbox) + intensityToExaggeration
   chatterbox_service.py  Yerel TTS servisi (port 8777, resident — spawn yolu güvenilmez)
-  *.test.ts         vitest: 75 test (faz2 · intervention · dialogue · retry · ttsLadder + src/lib)
+  *.test.ts         vitest: 76 test (faz2 · intervention · dialogue · retry · ttsLadder + src/lib)
+scripts/
+  sentiment-compare.ts  Eski vs yeni sentiment puanlaması gerçek sessions/*.jsonl üzerinde (eşik kalibrasyonu; salt-okur)
 src/
   App.tsx           Conversation loop, audio playback, senaryo akışı, telemetri state
   lib/
@@ -128,7 +130,7 @@ Every message is scored client-side (no API call) by scanning for keyword sets d
 
 Global sentiment drives the page's ambient glow color (box-shadow + radial gradient + border tint).
 
-**Eşleşme kuralı (10-01):** anahtarlar Unicode kelime sınırına sabitli kalıplardır — `~` = kök + herhangi ek (`gerçek~`), kısa sözcükler izinli ek listesiyle tam kelime (`sen(i|in|de…)?`). Eski düz alt-dize araması "teknik"te *tek*, "anlamak"ta *ama*, "nefes"te *ne* sayıyordu. JS `\b` Türkçe için kullanılamaz (ASCII: "güne" içinde *ne* bulur, "seni"de *sen*'i kaçırır). Sentiment tier'ı Chatterbox abartısını **sürmez** — o, modelin beat `intensity`'sidir; tier HUD/panel/transcript/ambient parlaklık + tarayıcı-TTS prosodisini sürer.
+**Eşleşme kuralı (10-01):** anahtarlar Unicode kelime sınırına sabitli kalıplardır — `~` = kök + herhangi ek (`gerçek~`), kısa sözcükler izinli ek listesiyle tam kelime (`sen(i|in|de…)?`). Eski düz alt-dize araması "teknik"te *tek*, "anlamak"ta *ama*, "nefes"te *ne* sayıyordu. JS `\b` Türkçe için kullanılamaz (ASCII: "güne" içinde *ne* bulur, "seni"de *sen*'i kaçırır). Sentiment tier'ı Chatterbox abartısını **sürmez** — o, modelin beat `intensity`'sidir; tier HUD/panel/transcript/ambient parlaklık + tarayıcı-TTS prosodisini sürer. Ünsüz yumuşaması/ünlü düşmesi kalıpta açık (`gerçe(k|ğ)~`, `zihi?n~`, `sessizli(k|ğ)~`, `sana`). **Eşikler (≥2 high, ≥1 mid) bilinçli olarak değiştirilmedi** — önce gerçek loglarda `npm run sentiment:compare`, karar tabloyla.
 
 ## Scripts
 
@@ -136,7 +138,8 @@ Global sentiment drives the page's ambient glow color (box-shadow + radial gradi
 operator secret run lilith -- npm run dev   # FISH_AUDIO_KEY kasadan gelir (GEMINI .env'de)
 npm run build     # Vite production build → dist/client/
 npm run start     # Production Express server (serves dist/client/)
-npm test          # vitest run (75 test)
+npm test          # vitest run (76 test)
+npm run sentiment:compare [-- dizin]   # sentiment eşik kalibrasyonu (default ./sessions)
 npm run typecheck # tsc --noEmit
 ```
 

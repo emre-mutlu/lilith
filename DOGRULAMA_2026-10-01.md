@@ -62,7 +62,7 @@ motoru seçince başlar") çiğner. Doğru okuma commit mesajındaki parantezde:
 |---|---|---|
 | **TTS merdiveni** (`server/ttsLadder.ts`, yeni) | `fish`/`gemini` düşerse local **yalnız zaten ayaktaysa** (`spawn:false`, sağlık kontrolü, başlatma yok); `local` seçiliyse gerekirse başlatır; bilinmeyen motor hiçbir katmanı çağırmaz. Log'lar gerçeği söyler | `ttsLadder.test.ts` — 7 test |
 | **Yeniden deneme** (`server/dialogue.ts`) | Tek katman: 429 → 35 sn × 2 (değişmedi); 503/`UNAVAILABLE`/"high demand" → 2 sn, 5 sn; diğer hatalar anında. Route'lardaki dış sarma kaldırıldı → 429 en kötü 70 sn (eskisi ~280 sn) | `retry.test.ts` — gerçek SDK `ApiError` biçimiyle; canlı duman testi: 400 hatası 0.25 sn'de düştü |
-| **Yedek model** | `GEMINI_FALLBACK_MODELS` (virgüllü), **varsayılan boş = kapalı**. Yalnız 503'te, birincil kısa denemelerden sonra da düşerse; 429'da geçmez. Replik başına `model` → `sessions/*.jsonl` | `retry.test.ts` |
+| **Yedek model** | `GEMINI_FALLBACK_MODELS` (virgüllü); ilk turda varsayılan kapalıydı, **§4 kararıyla açıldı**. Yalnız 503'te, birincil kısa denemelerden sonra da düşerse; 429'da geçmez. Replik başına `model` → `sessions/*.jsonl` | `retry.test.ts` |
 | **Sentiment** (`src/lib/sentiment.ts`) | Unicode kelime sınırı (lookbehind, `\p{L}`) + kök/ek kalıpları; regex'ler modül yüklenirken bir kez derlenir | `sentiment.test.ts` — 10 test; sızıntı testleri (ve `neden` çift sayımına bağlı yüzde testi) eski kodda **kırmızı**, doğru-eşleşme testleri iki sürümde de yeşil |
 | **Sahne kartı** | Görsel yüklenemezse sonsuz "SAHNE…" yerine "SAHNE YOK"; ↻ sıfırlar | typecheck/build |
 | **ErrorBoundary** | Render hatasında boş ekran yerine "SAHNE ÇÖKTÜ" + yeniden yükle; konuşma sentezi susturulur | typecheck/build |
@@ -73,7 +73,19 @@ motoru seçince başlar") çiğner. Doğru okuma commit mesajındaki parantezde:
 
 Sonuç: **75/75 test** (45 → 75), typecheck temiz, build 196.69 kB / 62.00 kB gzip.
 
-## 4. Senin kararına bırakılanlar (uygulanmadı)
+## 4. Kararlar (Emre, 10-01: "hepsi ok")
+
+| Konu | Karar | Durum |
+|---|---|---|
+| Yedek model | Aç: `gemini-3.6-flash,gemini-2.5-flash` | ✅ Default açık, `off` ile kapanır |
+| `project/` | Sil | ⏳ Bulut oturumu dosya silmeyi engelledi — ayrı turda |
+| Azure | Tamamen kaldır | ⏳ Aynı engel; dosya silinmeden referanslar koparılmadı (sahipsiz dosya kalmasın) |
+| Gemini TTS | Menüden çıkar, modül parkta | ✅ |
+| Sahne kartı | Önce tarayıcıda 30 sn doğrulama; 402/401 ise gizle | ⏳ Emre'nin doğrulaması |
+| Sentiment eşikleri | Ölçmeden değiştirme; yumuşama formlarını ölçümle birlikte ekle | ✅ Formlar + `npm run sentiment:compare`; eşikler aynı |
+| `ajan-503-fix-backup` + stash | Bak, 503 düzeltmesiyse sil | ⏳ Yerel makinede |
+
+### Karar öncesi seçenekler (kayıt)
 
 1. **Yedek model zinciri** açılsın mı? Altyapı hazır, `.env`'e `GEMINI_FALLBACK_MODELS=gemini-3.6-flash,gemini-2.5-flash`
    yazmak yeterli. Üslup kayması ölçülmedi; jsonl'deki `model` alanı bunu ölçmek için eklendi.
