@@ -3,7 +3,7 @@ export type Speaker = 'lilith' | 'generic' | 'user'
 export type TtsSpeaker = Exclude<Speaker, 'user'>
 export type SessionState = 'inactive' | 'running' | 'paused'
 export type SpeakerState = 'idle' | 'generating' | 'speaking'
-export type VoiceEngine = 'browser' | 'gemini' | 'azure' | 'local' | 'fish'
+export type VoiceEngine = 'browser' | 'gemini' | 'local' | 'fish'
 
 /** Araya-gir türü — her biri karakterler tarafından farklı algılanır:
  *  soz    → sahne dışından bir ses (duyarlar, serbest dokuma ile tepki verirler)
@@ -60,8 +60,8 @@ export interface GenerateResponse {
   intensity?: 'low' | 'mid' | 'high'
   audio?: string | null
   mimeType?: string | null
-  /** Sesfi gerçekten hangi katman verdi: fish/local/azure/gemini/browser/none */
-  engine?: 'fish' | 'local' | 'azure' | 'gemini' | 'browser' | 'none'
+  /** Sesfi gerçekten hangi katman verdi: fish/local/gemini/browser/none */
+  engine?: 'fish' | 'local' | 'gemini' | 'browser' | 'none'
   /** Toplam tur süresi (metin+ses), ms */
   latencyMs?: number
   error?: string

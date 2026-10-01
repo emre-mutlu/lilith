@@ -29,7 +29,6 @@ interface Props {
 const ENGINE_LABELS: Record<VoiceEngine, string> = {
   fish: 'Fish Audio',
   local: 'Chatterbox (yerel)',
-  azure: 'Azure Neural',
   gemini: 'Gemini TTS',
   browser: 'Tarayıcı',
 }
