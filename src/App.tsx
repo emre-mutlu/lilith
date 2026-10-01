@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude, InterventionMode } from '../shared/types'
+import type { Message, SessionState, SpeakerState, VoiceEngine, ScenarioPrelude, InterventionMode, GenerateResponse } from '../shared/types'
 import { globalSentiment, hexToRgb, scoreMessage } from './lib/sentiment'
 import { listTtsVoices, autoPickVoices, emotionalProsody, splitForProsody, decodeAudioData } from './lib/browserTts'
 import Header from './components/Header'
@@ -318,7 +318,10 @@ export default function App() {
 
   // ── Generate via backend ──────────────────────────────────────────────────
 
-  const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<{ text: string; mood?: string; intensity?: 'low' | 'mid' | 'high'; audio?: string | null; mimeType?: string | null }> => {
+  // Sunucu yanıtı = tur sonucu (tek tip kaynağı: shared/types.ts)
+  type TurnResult = GenerateResponse
+
+  const generateTurn = useCallback(async (speaker: 'lilith' | 'generic'): Promise<TurnResult> => {
     const history = messagesRef.current
     // Motor seçimi: mute -> ses üretme (tarayıcı yok) · aksi halde seçili motor
     const engine = mutedRef.current ? 'browser' : voiceEngineRef.current
@@ -331,7 +334,7 @@ export default function App() {
         sessionId: sessionIdRef.current ?? undefined,
       }),
     })
-    const data = await res.json()
+    const data = await res.json() as GenerateResponse
     if (!res.ok || data.error) throw new Error(data.error ?? 'API hatası')
     // Telemetri kaydı (gerçek sunucu ölçümü)
     if (typeof data.latencyMs === 'number') {
@@ -349,7 +352,6 @@ export default function App() {
 
   // ── Conversation loop ─────────────────────────────────────────────────────
 
-  type TurnResult = { text: string; mood?: string; intensity?: 'low' | 'mid' | 'high'; audio?: string | null; mimeType?: string | null }
   const runTurnRef = useRef<((speaker: 'lilith' | 'generic', token: number, prefetched?: TurnResult | null) => Promise<void>) | null>(null)
 
   const runTurn = useCallback(async (
