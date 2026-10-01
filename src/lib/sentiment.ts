@@ -5,13 +5,14 @@ import type { Message, MessageScore, GlobalSentiment } from '../../shared/types'
 // ASCII'dir, "güne" içindeki "ne"yi ayrı kelime sanır). Türkçe ekler için:
 //   `~`      = kökten sonra herhangi bir ek   (gerçek~ → gerçekten, gerçekliğin)
 //   (a|b)?   = kısa sözcüğün izinli ek listesi (sen → seni/senin… ama "senaryo" değil)
+// Ünsüz yumuşaması / ünlü düşmesi kalıpta açık: gerçe(k|ğ) → gerçeği, zihi?n → zihnin.
 // Eski düz alt-dize araması "teknik"te tek, "anlamak"ta ama, "nefes"te ne sayıyordu.
 
 // Lilith'in dili: gerçeklik, mutlaklık, güç, felsefi çekim
 const LILITH_KEYWORDS = [
-  'gerçek~', 'tek(tir|im|sin)?', 'mutlak~', 'yalnızca', 'sonsuz~', 'ötesi~', 'gölge~', 'ayna~',
-  'zihin~', 'teslim~', 'büyü(ye|yü|de|den|sü~|le~|lü~|cü~)?', 'ruh~', 'derin~', 'sessizlik~',
-  'benim(sin|le)?', 'sen(i|in|de|den|inle|ce)?',
+  'gerçe(k|ğ)~', 'tek(tir|im|sin)?', 'mutlak~', 'yalnızca', 'sonsuz~', 'ötesi~', 'gölge~', 'ayna~',
+  'zihi?n~', 'teslim~', 'büyü(ye|yü|de|den|sü~|le~|lü~|cü~)?', 'ruh~', 'derin~', 'sessizli(k|ğ)~',
+  'benim(sin|le)?', 'sen(i|in|de|den|inle|ce)?', 'sana',
 ]
 
 // Varlık'ın dili: kimlik arayışı, sorgulama, direnç, his

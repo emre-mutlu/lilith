@@ -33,8 +33,14 @@ describe('scoreMessage — Türkçe ekli doğru eşleşmeler korunur', () => {
   it('Lilith: kök + ek', () => {
     expect(score('lilith', 'Gerçekten tek gerçek benim.')).toBe(4) // gerçekten, tek, gerçek, benim
     expect(score('lilith', 'Seni gölgelerin ötesinde bekliyorum.')).toBe(3)
-    expect(score('lilith', 'Senin zihnin değil, ruhun konuşuyor.')).toBe(2) // senin, ruhun
+    expect(score('lilith', 'Senin zihnin değil, ruhun konuşuyor.')).toBe(3) // senin, zihnin, ruhun
     expect(score('lilith', 'Büyüsü bozulmadı; büyüleyici, değil mi?')).toBe(2)
+  })
+
+  it('Lilith: ünsüz yumuşaması / ünlü düşmesi / sana', () => {
+    expect(score('lilith', 'Gerçeği sana sessizliğin içinde gösterdim.')).toBe(3)
+    expect(score('lilith', 'Zihni, zihnim, zihinler')).toBe(3)
+    expect(score('lilith', 'sanat ve sanal')).toBe(0) // sana ⊄ sanat
   })
 
   it('Varlık: kimlik sorgusu', () => {
