@@ -7,8 +7,8 @@ Turkish-language AI dialogue simulation. Two characters — Kraliçe Lilith and 
 | Layer | Tech |
 |-------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4 |
-| Build | Vite 5 (middleware mode in dev) |
-| Backend | Express + TypeScript (`server/index.ts`) |
+| Build | Vite 8 / Rolldown (middleware mode in dev) |
+| Backend | Express 5 + TypeScript 7 (`server/index.ts`) |
 | AI | `@google/genai` — Gemini 3.5 Flash-Lite (text, **pinned**) · TTS: **Fish Audio** default (`s2.1-pro-free`, bulut) → Chatterbox yerel fallback (bağlıysa) → tarayıcı · Azure/Edge/Gemini-TTS PARK'ta veya kaldırıldı (08-24) |
 | Audio | Web Audio API (PCM decode) → SpeechSynthesis fallback |
 
@@ -26,6 +26,7 @@ npm run dev                # http://localhost:3000
 |----------|----------|-------|
 | `GEMINI_API_KEY` | Yes | Gemini text generation |
 | `GEMINI_MODEL` | No | Text model. Default `gemini-3.5-flash-lite` (pinned). Not: 2.5-flash çok yavaş (5.1s); 3.7-flash yük altında (503) |
+| `GEMINI_FALLBACK_MODELS` | No | Virgüllü yedek model zinciri — **yalnız 503'te**, birincil 2s/5s kısa denemelerden sonra da düşerse. Default boş = kapalı (pin korunur; üslup kayması ölçülmedi). Replik başına model `sessions/*.jsonl`'e yazılır |
 | `GEMINI_HISTORY` | No | Geçmiş penceresi, mesaj adedi. Default 20 |
 | `AZURE_SPEECH_KEY` | No | ⚠ **PARK (08-24, Emre kararı: Azure kullanılmayacak).** Kod duruyor; key ayarlı değilse katman zaten atlanır |
 | `AZURE_SPEECH_REGION` | No | Default `westeurope` (park halinde) |
@@ -38,14 +39,18 @@ npm run dev                # http://localhost:3000
 | `LOCAL_TTS_SPEAKERS` | No | Yerel motorun konuştuğu karakterler (iç kimlikler). Default `lilith,generic` (referanslar: assets/voices/{lilith,varlik}-ref.wav) |
 | `PORT` | No | Default 3000 |
 
+Boş env satırı (`GEMINI_MODEL=`) varsayılana düşer: server/ default'ları `||` ile okur (`--env-file` boş satırı `''` yapar, `??` yakalamaz).
+
 ## Project structure
 
 ```
 shared/
   types.ts          Tek tip kaynağı: Message, ScenarioPrelude, TtsSpeaker, VoiceEngine…
 server/
-  index.ts          Express routes (/api/director, /api/generate, /api/tts, /api/tts/status) + TTS merdiveni
-  dialogue.ts       Diyalog çekirdeği: system instructions, roleContents, pin-bellek, generateText
+  index.ts          Express routes (/api/director, /api/generate, /api/tts, /api/tts/status)
+  ttsLadder.ts      TTS merdiveni (saf, katmanlar enjekte): fish → local (ayaktaysa, spawn YOK) → none
+  dialogue.ts       Diyalog çekirdeği: system instructions, roleContents, pin-bellek, generateText,
+                    withRetry (429 uzun / 503 kısa) + withModelFallback — TEK katman, route'lar sarmaz
   director.ts       Senaryo sistemi: 24 eğilim + yay/tür/tempo eksenleri, prelüd şeması + doğrulama
   fishTts.ts        Fish Audio bulut katmanı (s2.1-pro-free)
   geminiTts.ts      Gemini TTS katmanı (parkta, kota düşük) + casting aday listesi
@@ -54,15 +59,16 @@ server/
   fishText.ts       prepareFishText — yalnız duygu etiketi ([emphasis]/[soft tone]); yapay duraksama YOK
   ttsText.ts        dramatizeForTts (… duraksamaları — artık SADECE Chatterbox) + intensityToExaggeration
   chatterbox_service.py  Yerel TTS servisi (port 8777, resident — spawn yolu güvenilmez)
-  faz2.test.ts · intervention.test.ts · dialogue.test.ts   vitest: 45 test (src/lib dahil)
+  *.test.ts         vitest: 75 test (faz2 · intervention · dialogue · retry · ttsLadder + src/lib)
 src/
   App.tsx           Conversation loop, audio playback, senaryo akışı, telemetri state
   lib/
-    sentiment.ts    Per-message scoring + global sentiment (no API)
+    sentiment.ts    Per-message scoring + global sentiment (no API) — kelime-sınırlı Türkçe kalıplar, testli
     pacing.ts       Replikler arası es: yoğunluk→süre + jitter (saf, test edilir)
     ambientParams.ts  Ambiyans ruh hâli → sentez parametreleri (saf, test edilir)
     browserTts.ts   Tarayıcı-TTS yardımcıları: ses seçimi, prosodi, PCM decoder
   components/
+    ErrorBoundary.tsx  Render hatasında boş ekran yerine "sahne çöktü" + yeniden yükle
     Header.tsx      Sentiment HUD, status dots
     CenterOverlay.tsx  Active-word card (desktop only)
     ControlBar.tsx  Start/pause/reset, mute, intervention input
@@ -102,7 +108,7 @@ Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT
 
 - **Fish mode (default)**: server returns base64 WAV (`audio/wav`, 44.1kHz) → client decodes via Web Audio API (`decodeAudioData`). Raw 16-bit LE PCM @ 24 kHz also handled as fallback.
 - **Browser mode**: SpeechSynthesis with character-specific prosody (Lilith: slow+low, Varlık: faster+higher) and emotional modulation based on sentiment score.
-- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (bağlıysa) → tarayıcı TTS. Chatterbox açılışta ısınmaz — yalnız seçilirse ilk istekte spawn edilir; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9.
+- **Voice engine default `fish`** (Fish Audio bulutu, s2.1-pro-free; ~1–3s) — merdiven otomatik düşer: fish → local (**yalnız zaten ayaktaysa** — yedek olarak spawn edilmez) → tarayıcı TTS (`server/ttsLadder.ts`; 10-01'e dek fish→local dalı kodda hiç yoktu). Chatterbox açılışta ısınmaz — yalnız seçilirse ilk istekte spawn edilir; footer "Simulation Parameters" panelinde `● ısınıyor…/hazır` durumu canlı telemetriyle (`/api/tts/status`). Fish intensity→temperature eşlemesi: low 0.65 / mid 0.75 / high 0.9.
   **Tempo/vurgu dersi (09-01, Emre A/B dinleyip karar verdi):** Fish'e giden metne artık **yapay duraksama eklenmiyor**. Önceki `dramatizeForTts` + `…`→`[break]` katmanı break'leri *kelime sayısına* göre koyuyordu (6+ kelimede hep 1. kelimeden sonra ve son iki kelimeden önce) → her replik aynı ritim kalıbı, konuşma ~%11 daha yavaş, üstelik `[break]mi` gibi sözcüğe yapışık. S2.1 prozodiyi noktalamadan zaten üretiyor. Etiketler doküman listesine hizalandı: `[intense]` (listede yok) → **`[emphasis]`**; `[soft tone]` geçerli. `[pause]` desteklenmiyor, `[break]`/`[long-break]` geçerli — ama artık kullanılmıyor. Ses seçimi kütüphaneden — **her ikisi de saf `tr`**: Hüma (Lilith) · Khonus (Varlık).
   **Casting kriteri (Emre, 09-01): Türkçe · en çok kullanılan · ünlü olmayan.** Global (dil filtresiz) en çok kullanılan **500 modelin hiçbiri `tr` desteklemiyor** — ölçüldü, o yol kapalı. Gerçek kişi/karakter taklitleri (Erdoğan 30k, Atatürk, Polat Alemdar…) kriter gereği elenir. Khonus = 3692 kullanım, `conversational`; önceki mazlum kiper (2214) `old + narration + documentary` idi — belgesel anlatıcısı tınısı, Varlık'ın şekillenmemiş karakterine ters.
   **Seviye dersi (09-01):** eski LEILA `['fr','en','tr']` idi — hem Türkçe aksanı bozuktu hem de **13.4 dB** sessizdi. Hüma'ya geçince karakterler arası fark **0.3 dB**'ye indi, yani RMS normalizasyonu gereksiz kaldı (ölçüldü, sonra iptal edildi). Kalan ~4 dB'lik oynama replik-içi ve **kasıtlı**: `intensity → temperature` eşlemesi sessiz repliği bilerek sessiz bırakıyor; normalize etmek o dinamiği düzleştirir.
@@ -122,13 +128,15 @@ Every message is scored client-side (no API call) by scanning for keyword sets d
 
 Global sentiment drives the page's ambient glow color (box-shadow + radial gradient + border tint).
 
+**Eşleşme kuralı (10-01):** anahtarlar Unicode kelime sınırına sabitli kalıplardır — `~` = kök + herhangi ek (`gerçek~`), kısa sözcükler izinli ek listesiyle tam kelime (`sen(i|in|de…)?`). Eski düz alt-dize araması "teknik"te *tek*, "anlamak"ta *ama*, "nefes"te *ne* sayıyordu. JS `\b` Türkçe için kullanılamaz (ASCII: "güne" içinde *ne* bulur, "seni"de *sen*'i kaçırır). Sentiment tier'ı Chatterbox abartısını **sürmez** — o, modelin beat `intensity`'sidir; tier HUD/panel/transcript/ambient parlaklık + tarayıcı-TTS prosodisini sürer.
+
 ## Scripts
 
 ```bash
 operator secret run lilith -- npm run dev   # FISH_AUDIO_KEY kasadan gelir (GEMINI .env'de)
 npm run build     # Vite production build → dist/client/
 npm run start     # Production Express server (serves dist/client/)
-npm test          # vitest run (45 test)
+npm test          # vitest run (75 test)
 npm run typecheck # tsc --noEmit
 ```
 
@@ -143,5 +151,5 @@ npm run typecheck # tsc --noEmit
 
 - **Prosedürel ambient** (`src/lib/ambient.ts` + saf eşleme `ambientParams.ts`): Web Audio drone+hava; sentiment'ten mood sürer (brightness=percent, tension=baskın konuşan+tırmanış eğimi+high-intensity dalgası). Zincir: `kaynaklar → preFx → [dry | convolver→wet] → level → duck → çıkış`.
   **09-01 revizyonu:** taban seviye 0.85→**0.30** + replik boyunca **ducking** (0.45×, `setDucked`) — konuşmayla yarışıyordu. **Değişken yankı**: prosedürel impulse response (üstel sönümlü gürültü, dosya yok), wet oranı gerilimle 0.10→0.50. Kompleksite: zıt yönde dolaşan stereo panorama, gerilimle E3↔F3 arası kayan üst katman, 9-26sn arası seyrek shimmer tonları (yankıya düşer). **Safari dersleri kodda:** context'i kullanıcı hareketinde yarat, `await resume()` + 120ms'de ikinci deneme, `visibilitychange`'de suspend/resume. Laptop hoparlör için A2 temel + E3 beşli katmanı şart (55Hz duyulmaz).
-- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz) ile senaryo eksenlerinden prompt kurup görsel üretir; footer sol hücresine yerleşik (kart + ambiyans rayı, SimParameters yanında), ↻ yeni seed. İnce tasarım sonraya — Emre kararı açık.
+- **Sahne kartı** (`src/components/SceneCard.tsx`): Pollinations (key'siz — ⚠ 10-01: anonim uç 402/401 dönüyor raporu, sağlayıcı kararı açık; yüklenemezse kart "SAHNE YOK" gösterir) ile senaryo eksenlerinden prompt kurup görsel üretir; footer sol hücresine yerleşik (kart + ambiyans rayı, SimParameters yanında), ↻ yeni seed. İnce tasarım sonraya — Emre kararı açık.
 - Gemini görsel (`gemini-3.1-flash-image`, `nano-banana-pro-preview`) + Lyria: free kota dar (429) → parkta. Pollinations latency 2-35sn oynak.
