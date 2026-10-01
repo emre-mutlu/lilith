@@ -6,7 +6,7 @@ import type { SentimentIntensity, TtsSpeaker } from '../shared/types'
 
 const FISH_API_KEY = process.env.FISH_AUDIO_KEY ?? ''
 // low/balanced/normal — normal en kararlı; interaktif için balanced denenebilir
-const FISH_LATENCY = (process.env.FISH_LATENCY ?? 'normal') as 'low' | 'balanced' | 'normal'
+const FISH_LATENCY = (process.env.FISH_LATENCY || 'normal') as 'low' | 'balanced' | 'normal'
 const FISH_MODEL_ID: Partial<Record<TtsSpeaker, string>> = {
   lilith: process.env.FISH_MODEL_LILITH || undefined,
   generic: process.env.FISH_MODEL_GENERIC || undefined,
