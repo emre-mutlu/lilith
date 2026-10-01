@@ -6,9 +6,11 @@
 - `cline/f61e1` dalındaki iki rapor (inceleme + prune) iddia iddia doğrulandı → **`DOGRULAMA_2026-10-01.md`** (hüküm tablosu + spec + açık kararlar).
 - Uygulandı: TTS merdiveni `fish → local (yalnız ayaktaysa, spawn yok) → none` (`server/ttsLadder.ts`); tek katmanlı retry (429 35s×2, **503 2s/5s**), çift sarma kalktı; opsiyonel yedek model zinciri (`GEMINI_FALLBACK_MODELS`, **default kapalı**) + jsonl'de replik başına `model`; sentiment kelime-sınırlı Türkçe kalıplar + test; SceneCard hata durumu; ErrorBoundary; env boş-satır varsayılanları (`||`); `qs` açığı. Test 45 → 75.
 - Raporun yanlışları: Fish'te timeout var; sentiment Chatterbox abartısını sürmez; `\b` Türkçe'de bozuk; önerilen merdiven düzeltmesi Chatterbox'ı spawn ederdi.
-- **Açık kararlar (Emre):** yedek modeli açmak · `project/` silinsin mi · Azure/Gemini-TTS seçeneği · sahne kartı sağlayıcısı (Pollinations anonim uç 402) · sentiment eşik ayarı.
+- **Kararlar (Emre, 10-01 — "hepsi ok"):** yedek model zinciri **açıldı** (default `gemini-3.6-flash,gemini-2.5-flash`, kapatmak `off`) · Gemini TTS **menüden çıktı** (modül parkta) · sentiment'e ünsüz yumuşaması/ünlü düşmesi formları + **`npm run sentiment:compare`** (eşik kararı gerçek loglarla verilecek, eşikler değişmedi).
+- **Bekleyenler:** `project/` + `server/azureTts.ts` silme ve Azure'un tipten/merdivenden sökülmesi — onaylandı ama bulut oturumunun izin kontrolü dosya silmeyi engelledi; ayrı turda. Sahne kartı: Emre tarayıcıda `https://image.pollinations.ai/prompt/test?seed=1` dener — 402/401 ise kart gizlenecek. Yerel: `cline/f61e1` dalı (uzaktan silme 403) + worktree, `ajan-503-fix-backup` + 2 stash.
+- **Sıradaki ölçüm:** birkaç oturumdan sonra `npm run sentiment:compare` → eşik kararı; jsonl `model` alanından yedek model sıklığı + kulakla üslup kontrolü.
 
-## 09-24 · Gemini 503 — retry UYGULANDI (10-01); yedek model kararı Emre'de
+## 09-24 · Gemini 503 — KAPANDI (10-01): retry 2s/5s + yedek model zinciri açık
 - **Belirti:** uygulama açılıyor ama konuşma ilerlemiyor. `/api/generate` + `/api/director` Gemini'den **503 "high demand"** alıyor; `withRetry` (`server/dialogue.ts:67`) yalnız 429'u yeniden deniyor → 503'te istek anında düşer.
 - **Ölçüm (09-24, kısa tek-replik isteği, 3–6 istek/model):** 3.8-flash 6/6 503 · 3.7-flash 6/6 503 · omni-1.1-flash + omni-flash-preview 6/6 **429** (ücretsiz kotada yok) · 3.6-flash 6/6 ok, 2.4–22s (ortanca ~7.5s) · 3.5-flash-lite (pinli) 3/6 ok, 25–33s · 2.5-flash 4/6 ok, 1.6–1.8s · 2.5-flash-lite 404 · `3.6-flash-lite` YOK (models.list). Yarım saat sonra 3.6-flash da director'da 4/4 503 → yük modeller arasında dolaşıyor, model seçimi kalıcı çözüm değil.
 - **Pin değişmedi:** `.env`/kod hâlâ `gemini-3.5-flash-lite` (3.6-flash yalnız env ile denendi).

@@ -28,7 +28,7 @@ React 18 + TS + Tailwind v4  ←→  Express 5 + TS (server/)
 |---|---|
 | **fish** | Fish Audio bulutu (`s2.1-pro-free`, ücretsiz) — kütüphane sesleri `.env`'deki model ID'lerinden |
 | **local** | Chatterbox (MPS, ~1.2× gerçek-zamanlı). Referans klip = sabit ses kimliği (`assets/voices/*.wav`). `CHATTERBOX_PYTHON` ayarlıysa Node servisi ilk kullanımda kendisi başlatır (açılışta ısınmaz) |
-| **gemini** | Bedava kota 10 istek/gün — özel anlar için parkta |
+| **gemini** | Bedava kota 10 istek/gün — özel anlar için parkta; UI menüsünde yok (yalnız API) |
 | **browser** | SpeechSynthesis, karakter prosodisi + duygu modülasyonu |
 
 Beat şemasından gelen `intensity`, Chatterbox abartısını sürer: low→0.8 · mid→1.2 · high→1.7.
@@ -52,7 +52,7 @@ Footer "Simulation Parameters" paneli sahte sayı göstermez: son tur / ortalama
 |---|---|---|
 | `GEMINI_API_KEY` | ✅ | Metin üretimi |
 | `GEMINI_MODEL` | — | Pinned: `gemini-3.5-flash-lite`. Alias kullanma |
-| `GEMINI_FALLBACK_MODELS` | — | Virgüllü yedek zincir, yalnız 503'te devreye girer (default boş = kapalı) |
+| `GEMINI_FALLBACK_MODELS` | — | Virgüllü yedek zincir, yalnız 503'te devreye girer. Default `gemini-3.6-flash,gemini-2.5-flash`; kapatmak `off` |
 | `GEMINI_HISTORY` | — | Geçmiş penceresi (default 20) |
 | `FISH_MODEL_LILITH` / `FISH_MODEL_GENERIC` | — | Fish Audio kütüphane ses ID'leri (default motor) |
 | `FISH_LATENCY` | — | `normal` (default, kararlı) / `balanced` (interaktif, ~%40 hızlı) |
@@ -71,4 +71,5 @@ npm run build      # dist/client/
 npm start          # prod sunucu
 npm test           # vitest (director/diyalog/retry/merdiven/sentiment/pacing/ambient)
 npm run typecheck  # tsc --noEmit
+npm run sentiment:compare  # sentiment eşik kalibrasyonu (sessions/*.jsonl)
 ```
