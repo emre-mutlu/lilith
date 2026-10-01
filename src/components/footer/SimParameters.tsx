@@ -66,9 +66,10 @@ export default function SimParameters({ voiceEngine, setVoiceEngine, localTts, r
             padding: '2px 6px', borderRadius: 2, outline: 'none',
           }}
         >
+          {/* Gemini TTS menüden çıktı (10-01): ~10 istek/gün kota → seçili görünürken
+              sessizce tarayıcı sesine düşüyordu. Modül parkta; API'de duruyor. */}
           <option value="fish" style={{ background: '#0A0A0A' }}>Fish Audio</option>
           <option value="local" style={{ background: '#0A0A0A' }}>Chatterbox (yerel)</option>
-          <option value="gemini" style={{ background: '#0A0A0A' }}>Gemini TTS</option>
           <option value="browser" style={{ background: '#0A0A0A' }}>Tarayıcı</option>
         </select>
       </StatRow>

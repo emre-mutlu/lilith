@@ -20,10 +20,14 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? ''
 // `GEMINI_MODEL=` de varsayılana düşmeli (server/ genelinde aynı kural).
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
 // Yedek model zinciri — YALNIZ 503'te, birincil kısa denemelerden sonra da düşerse.
-// Varsayılan BOŞ: pin stratejisi korunur, üslup kayması ölçülmedi (DEVIR_NOTU 09-24).
-// Açmak için .env: GEMINI_FALLBACK_MODELS=gemini-3.6-flash,gemini-2.5-flash
-export const GEMINI_FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS ?? '')
-  .split(',').map(s => s.trim()).filter(Boolean)
+// Açık (Emre kararı 10-01): 503'te sohbetin durması, tek replikte üslup farkından
+// kötü; her istek yine pinli modelle başlar, kayma sonraki repliğe taşınmaz.
+// Sıra: 3.6-flash aynı nesil (tını yakın; yük altı ~7.5s gecikmesini prefetch
+// büyük ölçüde örter) → 2.5-flash son çare (09-24: 1.6–1.8s). Kapatmak: `off`.
+const FALLBACK_RAW = process.env.GEMINI_FALLBACK_MODELS || 'gemini-3.6-flash,gemini-2.5-flash'
+export const GEMINI_FALLBACK_MODELS = FALLBACK_RAW.trim() === 'off'
+  ? []
+  : FALLBACK_RAW.split(',').map(s => s.trim()).filter(Boolean)
 // Geçmiş penceresi — kayan pencere boyutu (mesaj adedi). Faz 2'de 12/20/30 A/B
 // ölçümü yapılacak; varsayılan 20 (eski sabit 12 prototipten kalma, hiç ölçülmemişti).
 const HISTORY_WINDOW = parseInt(process.env.GEMINI_HISTORY || '20', 10)
