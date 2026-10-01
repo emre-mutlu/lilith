@@ -1,8 +1,14 @@
 # Lilith — Devir Notu
 
-*Son güncelleme: 2026-09-24*
+*Son güncelleme: 2026-10-01*
 
-## 09-24 · Gemini 503 — AÇIK, karar Emre'de (onay bekliyor)
+## 10-01 · Dış rapor doğrulaması + iyileştirme turu
+- `cline/f61e1` dalındaki iki rapor (inceleme + prune) iddia iddia doğrulandı → **`DOGRULAMA_2026-10-01.md`** (hüküm tablosu + spec + açık kararlar).
+- Uygulandı: TTS merdiveni `fish → local (yalnız ayaktaysa, spawn yok) → none` (`server/ttsLadder.ts`); tek katmanlı retry (429 35s×2, **503 2s/5s**), çift sarma kalktı; opsiyonel yedek model zinciri (`GEMINI_FALLBACK_MODELS`, **default kapalı**) + jsonl'de replik başına `model`; sentiment kelime-sınırlı Türkçe kalıplar + test; SceneCard hata durumu; ErrorBoundary; env boş-satır varsayılanları (`||`); `qs` açığı. Test 45 → 75.
+- Raporun yanlışları: Fish'te timeout var; sentiment Chatterbox abartısını sürmez; `\b` Türkçe'de bozuk; önerilen merdiven düzeltmesi Chatterbox'ı spawn ederdi.
+- **Açık kararlar (Emre):** yedek modeli açmak · `project/` silinsin mi · Azure/Gemini-TTS seçeneği · sahne kartı sağlayıcısı (Pollinations anonim uç 402) · sentiment eşik ayarı.
+
+## 09-24 · Gemini 503 — retry UYGULANDI (10-01); yedek model kararı Emre'de
 - **Belirti:** uygulama açılıyor ama konuşma ilerlemiyor. `/api/generate` + `/api/director` Gemini'den **503 "high demand"** alıyor; `withRetry` (`server/dialogue.ts:67`) yalnız 429'u yeniden deniyor → 503'te istek anında düşer.
 - **Ölçüm (09-24, kısa tek-replik isteği, 3–6 istek/model):** 3.8-flash 6/6 503 · 3.7-flash 6/6 503 · omni-1.1-flash + omni-flash-preview 6/6 **429** (ücretsiz kotada yok) · 3.6-flash 6/6 ok, 2.4–22s (ortanca ~7.5s) · 3.5-flash-lite (pinli) 3/6 ok, 25–33s · 2.5-flash 4/6 ok, 1.6–1.8s · 2.5-flash-lite 404 · `3.6-flash-lite` YOK (models.list). Yarım saat sonra 3.6-flash da director'da 4/4 503 → yük modeller arasında dolaşıyor, model seçimi kalıcı çözüm değil.
 - **Pin değişmedi:** `.env`/kod hâlâ `gemini-3.5-flash-lite` (3.6-flash yalnız env ile denendi).
@@ -25,7 +31,7 @@ Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) c
 1. launchd: chatterbox servisini kalıcı resident yap (Operator gündeminde).
 2. Sahne kartı tasarımı + ambient duygu eşlemesinin zenginleştirilmesi (Emre kararına açık).
 
-*(08-25 ikinci tur: bağımlılık modernizasyonu TAMAM — vite 8 + express 5 + @google/genai 2 + TypeScript 7; `npm audit` 0 vulnerability. React 19 ölçümle reddedildi: bundle +%26, getirim sıfır.)*
+*(08-25 ikinci tur: bağımlılık modernizasyonu TAMAM — vite 8 + express 5 + @google/genai 2 + TypeScript 7; `npm audit` 0 vulnerability (o tarihte; 10-01'de çıkan `qs` açığı kapatıldı). React 19 ölçümle reddedildi: bundle +%26, getirim sıfır.)*
 
 ---
 ---

@@ -13,7 +13,7 @@ npm run dev            # http://localhost:3000
 ## Mimari
 
 ```
-React 18 + TS + Tailwind v4  ←→  Express + TS (server/)
+React 18 + TS + Tailwind v4  ←→  Express 5 + TS (server/)
         │                            ├─ /api/director → gizli senaryo prelüdü
         │ Web Audio / SpeechSynthesis├─ /api/generate → beat {text,mood,intensity} + TTS merdiveni
         └────────────────────────────┴─ /api/tts      → tekil TTS
@@ -22,7 +22,7 @@ React 18 + TS + Tailwind v4  ←→  Express + TS (server/)
 
 ## Ses merdiveni
 
-`fish → local → tarayıcı` — seçilen motor düşerse sıradaki katman devralır; yanıtın `engine` alanı sesi kimin verdiğini söyler.
+`fish → local (yalnız zaten ayaktaysa) → tarayıcı` — seçilen motor düşerse sıradaki katman devralır; yanıtın `engine` alanı sesi kimin verdiğini söyler. Chatterbox yedek olarak **başlatılmaz**: yalnız kullanıcı "yerel" motoru seçince ısınır, Fish düştüğünde ancak zaten çalışıyorsa devralır (`server/ttsLadder.ts`, testli).
 
 | Katman | Not |
 |---|---|
@@ -52,11 +52,14 @@ Footer "Simulation Parameters" paneli sahte sayı göstermez: son tur / ortalama
 |---|---|---|
 | `GEMINI_API_KEY` | ✅ | Metin üretimi |
 | `GEMINI_MODEL` | — | Pinned: `gemini-3.5-flash-lite`. Alias kullanma |
+| `GEMINI_FALLBACK_MODELS` | — | Virgüllü yedek zincir, yalnız 503'te devreye girer (default boş = kapalı) |
 | `GEMINI_HISTORY` | — | Geçmiş penceresi (default 20) |
 | `FISH_MODEL_LILITH` / `FISH_MODEL_GENERIC` | — | Fish Audio kütüphane ses ID'leri (default motor) |
 | `FISH_LATENCY` | — | `normal` (default, kararlı) / `balanced` (interaktif, ~%40 hızlı) |
 | `CHATTERBOX_PYTHON` | — | Chatterbox venv python yolu → port 8777 servisi |
 | `LOCAL_TTS_EXAGGERATION` | — | Default 1.2 (beat intensity override eder) |
+| `LOCAL_TTS_DRAMATIZE` | — | `1` (default): Chatterbox metnine dramatik `…` duraksamaları |
+| `LOCAL_TTS_SPEAKERS` | — | Yerel motorun konuştuğu karakterler (default `lilith,generic`) |
 | `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` | — | Ayarsızsa Azure katmanı atlanır |
 | `PORT` | — | Default 3000 |
 
@@ -66,6 +69,6 @@ Footer "Simulation Parameters" paneli sahte sayı göstermez: son tur / ortalama
 npm run dev        # Express + Vite (hot reload)
 npm run build      # dist/client/
 npm start          # prod sunucu
-npm test           # vitest (director/dramatize/kalibrasyon)
+npm test           # vitest (director/diyalog/retry/merdiven/sentiment/pacing/ambient)
 npm run typecheck  # tsc --noEmit
 ```
