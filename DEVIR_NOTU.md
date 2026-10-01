@@ -8,7 +8,7 @@
 - Raporun yanlışları: Fish'te timeout var; sentiment Chatterbox abartısını sürmez; `\b` Türkçe'de bozuk; önerilen merdiven düzeltmesi Chatterbox'ı spawn ederdi.
 - **Kararlar (Emre, 10-01 — "hepsi ok"):** yedek model zinciri **açıldı** (default `gemini-3.6-flash,gemini-2.5-flash`, kapatmak `off`) · Gemini TTS **menüden çıktı** (modül parkta) · sentiment'e ünsüz yumuşaması/ünlü düşmesi formları + **`npm run sentiment:compare`** (eşik kararı gerçek loglarla verilecek, eşikler değişmedi).
 - **İkinci tur (Emre izniyle):** `project/` silindi; Azure tamamen söküldü (`azureTts.ts`, `VoiceEngine`, merdiven, `/api/tts`, UI, env). Pollinations Emre'nin tarayıcısında **çalışıyor** → sahne kartı kalıyor (raporun 402 iddiası onun ortamında geçersiz).
-- **Bekleyen (yalnız yerel makinede):** `cline/f61e1` dalı (bulut oturumundan uzaktan silme 403) + worktree, `ajan-503-fix-backup` + stash'ler — önce `~/Documents/Claude/arsiv/lilith-eser/2026-10-01-temizlik/`'e patch olarak arşivlenip sonra silinecek. **Talimat: `YEREL_TEMIZLIK.md`** (yerel oturum uygular, bitince dosyayı siler).
+- **Yerel temizlik TAMAM (2026-10-01):** `cline/f61e1` (yerel + uzak + worktree) silindi; iki raporu önce `~/Documents/Claude/arsiv/lilith-eser/2026-10-01-temizlik/`'e arşivlendi. `ajan-503-fix-backup` dalı ve stash'ler yerelde zaten yoktu (arşivlenecek bir şey çıkmadı). 503 karşılaştırması: karşılaştırılacak ajan patch'i/stash olmadığından yapılmadı, `main`'deki retry/yedek-model çözümü esas alınır.
 - **Sıradaki ölçüm:** birkaç oturumdan sonra `npm run sentiment:compare` → eşik kararı; jsonl `model` alanından yedek model sıklığı + kulakla üslup kontrolü.
 
 ## 09-24 · Gemini 503 — KAPANDI (10-01): retry 2s/5s + yedek model zinciri açık
