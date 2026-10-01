@@ -31,8 +31,11 @@ Aktif. Faz 2 (senaryo sistemi) + Faz 4 (eser katmanı: ambient + sahne kartı) c
 - **Hijyen:** sessions/*.jsonl temizlendi (politika yok — birikince elle); `chats/chat1.md` bilinçli duruyor (doğum sohbeti, Emre kararı).
 
 ## Sıradaki
-1. launchd: chatterbox servisini kalıcı resident yap (Operator gündeminde).
-2. Sahne kartı tasarımı + ambient duygu eşlemesinin zenginleştirilmesi (Emre kararına açık).
+- ~~launchd: chatterbox servisini kalıcı resident yap~~ — **İPTAL.** Bu madde 08-25 kararından ("Chatterbox açılınca açılsın", `213242f`) önce yazılmış, kararla silinmemişti; Emre 10-01'de teyit etti: kalıcı servis istenmiyor. Önerme.
+1. **Ölçüm** (birkaç oturum sonra): `npm run sentiment:compare` → eşik kararı · jsonl `model` alanı → yedek model sıklığı + kulakla üslup kontrolü.
+2. `tasarim_notlari.md` Kart 2–5 (TASLAK, Emre gözden geçirecek) → tezin damıtılması.
+3. Sahne kartı tasarımı + ambient duygu eşlemesinin zenginleştirilmesi (Emre kararına açık).
+4. Eski backlog: kullanıcı "Moderatör" → katılımcı (Lilith kullanıcıya hitap eder) · `GEMINI_HISTORY` 12/20/30 A/B.
 
 *(08-25 ikinci tur: bağımlılık modernizasyonu TAMAM — vite 8 + express 5 + @google/genai 2 + TypeScript 7; `npm audit` 0 vulnerability (o tarihte; 10-01'de çıkan `qs` açığı kapatıldı). React 19 ölçümle reddedildi: bundle +%26, getirim sıfır.)*
 

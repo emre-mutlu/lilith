@@ -54,7 +54,7 @@ server/
   localTts.ts       Chatterbox istemcisi: sağlık-cache, spawn/ısınma/temiz kapanış
   fishText.ts       prepareFishText — yalnız duygu etiketi ([emphasis]/[soft tone]); yapay duraksama YOK
   ttsText.ts        dramatizeForTts (… duraksamaları — artık SADECE Chatterbox) + intensityToExaggeration
-  chatterbox_service.py  Yerel TTS servisi (port 8777, resident — spawn yolu güvenilmez)
+  chatterbox_service.py  Yerel TTS servisi (port 8777) — yalnız yerel motor seçilince Node spawn eder; kalıcı/launchd YOK
   *.test.ts         vitest: 76 test (faz2 · intervention · dialogue · retry · ttsLadder + src/lib)
 scripts/
   sentiment-compare.ts  Eski vs yeni sentiment puanlaması gerçek sessions/*.jsonl üzerinde (eşik kalibrasyonu; salt-okur)
@@ -111,6 +111,7 @@ Ses kimliği v2 (08-23 casting): ref'ler Resemble resmi demo kliplerinden (FR/IT
   **Casting kriteri (Emre, 09-01): Türkçe · en çok kullanılan · ünlü olmayan.** Global (dil filtresiz) en çok kullanılan **500 modelin hiçbiri `tr` desteklemiyor** — ölçüldü, o yol kapalı. Gerçek kişi/karakter taklitleri (Erdoğan 30k, Atatürk, Polat Alemdar…) kriter gereği elenir. Khonus = 3692 kullanım, `conversational`; önceki mazlum kiper (2214) `old + narration + documentary` idi — belgesel anlatıcısı tınısı, Varlık'ın şekillenmemiş karakterine ters.
   **Seviye dersi (09-01):** eski LEILA `['fr','en','tr']` idi — hem Türkçe aksanı bozuktu hem de **13.4 dB** sessizdi. Hüma'ya geçince karakterler arası fark **0.3 dB**'ye indi, yani RMS normalizasyonu gereksiz kaldı (ölçüldü, sonra iptal edildi). Kalan ~4 dB'lik oynama replik-içi ve **kasıtlı**: `intensity → temperature` eşlemesi sessiz repliği bilerek sessiz bırakıyor; normalize etmek o dinamiği düzleştirir.
 - **Chatterbox reçete:** referans klip = kimlik (`assets/voices/lilith-ref.wav`), exaggeration = duygu şiddeti, metne `…` duraksamaları = dramatik tempo (sadece TTS'e uygulanır). Servis: `server/chatterbox_service.py` (port 8777), Node gerektiğinde kendisi başlatır.
+  **Karar (Emre 08-25, 10-01'de teyit): Chatterbox "açılınca açılsın"** — kalıcı servis / launchd / açılışta ısınma **istenmiyor**, önerme. Sonucu bilinçli: Fish düşerse yerel ses yalnız o oturumda yerel motor daha önce seçilip servis ayaktaysa devralır, aksi halde tarayıcı TTS. (08-23 notu "spawn yolu güvenilmez" idi — spawn sorun çıkarırsa ilk bakılacak yer.)
 
 ## Konuşma temposu (es)
 
